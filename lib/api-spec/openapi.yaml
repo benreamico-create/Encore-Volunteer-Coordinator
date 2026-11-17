@@ -1,36 +1,768 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: Encore organizer and volunteer API
 servers:
   - url: /api
-    description: Base API path
-tags:
-  - name: health
-    description: Health operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
-      tags: [health]
-      summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+  /auth/me:
+    get:
+      operationId: getSession
+      responses:
+        "200":
+          description: Current session and CSRF token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionInfo" }
+  /auth/signup:
+    post:
+      operationId: signUp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuthInput" }
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionInfo" }
+  /auth/login:
+    post:
+      operationId: logIn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuthInput" }
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionInfo" }
+  /auth/logout:
+    post:
+      operationId: logOut
+      responses:
+        "200":
+          description: Signed out
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /series:
+    get:
+      operationId: listSeries
+      responses:
+        "200":
+          description: Owned series
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Series" } }
+    post:
+      operationId: createSeries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SeriesInput" }
+      responses:
+        "200":
+          description: Series
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Series" }
+  /series/{id}/dashboard:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      operationId: getDashboard
+      responses:
+        "200":
+          description: Events, progress, latest lesson and reusable resources
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dashboard" }
+  /series/{id}/events:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      operationId: createEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EventInput" }
+      responses:
+        "200":
+          description: Created event
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Event" }
+  /events/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      operationId: getEvent
+      responses:
+        "200":
+          description: Full authorized event workspace
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventBundle" }
+    patch:
+      operationId: updateEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EventUpdate" }
+      responses:
+        "200":
+          description: Updated event
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Event" }
+  /events/{id}/accept-plan:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      operationId: acceptPlan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlanDraft" }
+      responses:
+        "200":
+          description: Plan explicitly accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /events/{id}/tasks:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskInput" }
+      responses:
+        "200":
+          description: Task
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+  /events/{id}/tasks/{itemId}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/ItemId" }
+    patch:
+      operationId: updateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskUpdate" }
+      responses:
+        "200":
+          description: Task
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+    delete:
+      operationId: deleteTask
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /events/{id}/roles:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      operationId: createRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoleInput" }
+      responses:
+        "200":
+          description: Role
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Role" }
+  /events/{id}/roles/{itemId}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/ItemId" }
+    patch:
+      operationId: updateRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoleInput" }
+      responses:
+        "200":
+          description: Role
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Role" }
+    delete:
+      operationId: deleteRole
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /events/{id}/volunteers/{itemId}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/ItemId" }
+    delete:
+      operationId: removeVolunteer
+      responses:
+        "200":
+          description: Removed and slot freed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /events/{id}/recap:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    put:
+      operationId: saveRecap
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecapInput" }
+      responses:
+        "200":
+          description: Saved recap and resources
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /events/{id}/next:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      operationId: createNextEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NextInput" }
+      responses:
+        "200":
+          description: New event with selected carry-over only
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Event" }
+  /events/{id}/reminder:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      operationId: getReminder
+      responses:
+        "200":
+          description: Editable reminder and mailto recipients
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reminder" }
+  /demo:
+    post:
+      operationId: loadDemo
+      responses:
+        "200":
+          description: Idempotently created fictional demo series
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Series" }
+  /ai/plan:
+    post:
+      operationId: draftPlan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AiInput" }
+      responses:
+        "200":
+          description: AI draft or template, never applied
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlanDraft" }
+  /ai/helper:
+    post:
+      operationId: askHelper
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AiInput" }
+      responses:
+        "200":
+          description: Explicitly applicable suggested actions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HelperDraft" }
+  /ai/starter:
+    post:
+      operationId: draftStarter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AiInput" }
+      responses:
+        "200":
+          description: Editable starter items
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StarterDraft" }
+  /public/join/{slug}:
+    parameters:
+      - { name: slug, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getSignup
+      responses:
+        "200":
+          description: Public event and role availability without personal data
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignupPage" }
+    post:
+      operationId: joinEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignupInput" }
+      responses:
+        "200":
+          description: Private volunteer token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JoinResult" }
+  /public/v/{token}:
+    parameters:
+      - { name: token, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getVolunteerPage
+      responses:
+        "200":
+          description: Token-scoped volunteer details and tasks
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VolunteerPage" }
+  /public/v/{token}/tasks/{itemId}:
+    parameters:
+      - { name: token, in: path, required: true, schema: { type: string } }
+      - { $ref: "#/components/parameters/ItemId" }
+    patch:
+      operationId: tickVolunteerTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TickInput" }
+      responses:
+        "200":
+          description: Updated own checklist
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
 components:
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: integer } }
+    ItemId: { name: itemId, in: path, required: true, schema: { type: integer } }
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
-
+        status: { type: string }
+    Ok:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+    User:
+      type: object
+      required: [id, name, email]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+    SessionInfo:
+      type: object
+      required: [user, csrfToken, ai_remaining, email_enabled]
+      properties:
+        user: { anyOf: [{ $ref: "#/components/schemas/User" }, { type: "null" }] }
+        csrfToken: { type: string }
+        ai_remaining: { type: integer }
+        email_enabled: { type: boolean }
+    AuthInput:
+      type: object
+      required: [email, password]
+      properties:
+        name: { type: string, maxLength: 80 }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 8, maxLength: 128 }
+    SeriesInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, maxLength: 2000 }
+    Series:
+      allOf:
+        - { $ref: "#/components/schemas/SeriesInput" }
+        - type: object
+          required: [id, owner_id]
+          properties:
+            id: { type: integer }
+            owner_id: { type: integer }
+    EventInput:
+      type: object
+      required: [name, starts_at, description_raw]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        starts_at: { type: string }
+        timezone: { type: string }
+        city: { type: string, maxLength: 160 }
+        place_text: { type: string, maxLength: 500 }
+        guests_expected: { type: integer, minimum: 0, maximum: 100000 }
+        budget_amount: { type: number, minimum: 0 }
+        budget_currency: { type: string }
+        description_raw: { type: string, minLength: 1, maxLength: 10000 }
+        purpose_why: { type: string, maxLength: 2000 }
+        purpose_audience: { type: string, maxLength: 2000 }
+        purpose_takeaway: { type: string, maxLength: 2000 }
+    EventUpdate:
+      type: object
+      properties:
+        signups_open: { type: boolean }
+        auto_task_from_signup: { type: boolean }
+        event_day_mode: { type: boolean }
+        event_day_notes: { type: string, maxLength: 5000 }
+        day_of_contact_text: { type: string, maxLength: 500 }
+        status: { type: string, enum: [planning, upcoming, done] }
+        place_text: { type: string, maxLength: 500 }
+    Event:
+      allOf:
+        - { $ref: "#/components/schemas/EventInput" }
+        - type: object
+          required: [id, series_id, signup_slug, status, signups_open, auto_task_from_signup, event_day_mode, timezone, tasks_done, tasks_total, volunteers_count, roles_count, plan_accepted]
+          properties:
+            id: { type: integer }
+            series_id: { type: integer }
+            previous_event_id: { type: [integer, "null"] }
+            signup_slug: { type: string }
+            status: { type: string, enum: [planning, upcoming, done] }
+            signups_open: { type: boolean }
+            auto_task_from_signup: { type: boolean }
+            event_day_mode: { type: boolean }
+            event_day_notes: { type: string }
+            day_of_contact_text: { type: string }
+            timezone: { type: string }
+            tasks_done: { type: integer }
+            tasks_total: { type: integer }
+            volunteers_count: { type: integer }
+            roles_count: { type: integer }
+            plan_accepted: { type: boolean }
+            carried_lesson: { type: string }
+            carried_didnt: { type: string }
+    RoleInput:
+      type: object
+      required: [name, instruction, slots_needed]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        instruction: { type: string, maxLength: 2000 }
+        slots_needed: { type: integer, minimum: 1, maximum: 100 }
+    Role:
+      allOf:
+        - { $ref: "#/components/schemas/RoleInput" }
+        - type: object
+          required: [id, event_id, filled]
+          properties:
+            id: { type: integer }
+            event_id: { type: integer }
+            filled: { type: integer }
+    TaskInput:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        group_name: { type: string, maxLength: 120 }
+        status: { type: string, enum: [todo, doing, done] }
+        assignee_user_id: { type: [integer, "null"] }
+        assignee_volunteer_id: { type: [integer, "null"] }
+        role_id: { type: [integer, "null"] }
+        due_date: { type: [string, "null"] }
+        recurring: { type: boolean }
+        sort_order: { type: number }
+    TaskUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        group_name: { type: string, maxLength: 120 }
+        status: { type: string, enum: [todo, doing, done] }
+        assignee_user_id: { type: [integer, "null"] }
+        assignee_volunteer_id: { type: [integer, "null"] }
+        role_id: { type: [integer, "null"] }
+        due_date: { type: [string, "null"] }
+        recurring: { type: boolean }
+        sort_order: { type: number }
+    Task:
+      allOf:
+        - { $ref: "#/components/schemas/TaskInput" }
+        - type: object
+          required: [id, event_id, status, source, recurring, sort_order]
+          properties:
+            id: { type: integer }
+            event_id: { type: integer }
+            status: { type: string, enum: [todo, doing, done] }
+            source: { type: string }
+            source_note: { type: string }
+            recurring: { type: boolean }
+            sort_order: { type: number }
+    Volunteer:
+      type: object
+      required: [id, event_id, role_id, name, email_consent, ask_again, token, status, created_at]
+      properties:
+        id: { type: integer }
+        event_id: { type: integer }
+        role_id: { type: integer }
+        name: { type: string }
+        email: { type: [string, "null"] }
+        email_consent: { type: boolean }
+        ask_again: { type: boolean }
+        token: { type: string }
+        status: { type: string }
+        created_at: { type: string }
+    Resource:
+      type: object
+      required: [name, kind, note, use_again]
+      properties:
+        id: { type: integer }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        kind: { type: string, enum: [venue, sponsor, vendor, speaker, other] }
+        note: { type: string, maxLength: 2000 }
+        use_again: { type: boolean }
+        carried_from_id: { type: [integer, "null"] }
+    RecapInput:
+      type: object
+      required: [registered, attended, what_worked, what_didnt, top_lesson, rating_overall, rating_venue, rating_volunteers, resources, items]
+      properties:
+        registered: { type: integer, minimum: 0, maximum: 1000000 }
+        attended: { type: integer, minimum: 0, maximum: 1000000 }
+        what_worked: { type: string, maxLength: 5000 }
+        what_didnt: { type: string, maxLength: 5000 }
+        top_lesson: { type: string, maxLength: 5000 }
+        rating_overall: { type: integer, minimum: 1, maximum: 5 }
+        rating_venue: { type: integer, minimum: 1, maximum: 5 }
+        rating_volunteers: { type: integer, minimum: 1, maximum: 5 }
+        resources: { type: array, maxItems: 50, items: { $ref: "#/components/schemas/Resource" } }
+        items: { type: array, maxItems: 30, items: { type: string, maxLength: 1000 } }
+    Recap:
+      allOf:
+        - { $ref: "#/components/schemas/RecapInput" }
+        - type: object
+          required: [id, event_id]
+          properties:
+            id: { type: integer }
+            event_id: { type: integer }
+    EventBundle:
+      type: object
+      required: [event, series, tasks, roles, volunteers, resources, recap, previous, organizers]
+      properties:
+        event: { $ref: "#/components/schemas/Event" }
+        series: { $ref: "#/components/schemas/Series" }
+        tasks: { type: array, items: { $ref: "#/components/schemas/Task" } }
+        roles: { type: array, items: { $ref: "#/components/schemas/Role" } }
+        volunteers: { type: array, items: { $ref: "#/components/schemas/Volunteer" } }
+        resources: { type: array, items: { $ref: "#/components/schemas/Resource" } }
+        recap: { anyOf: [{ $ref: "#/components/schemas/Recap" }, { type: "null" }] }
+        previous: { anyOf: [{ $ref: "#/components/schemas/PreviousEvent" }, { type: "null" }] }
+        organizers: { type: array, items: { $ref: "#/components/schemas/User" } }
+    PreviousEvent:
+      type: object
+      required: [event, recap, resources, tasks]
+      properties:
+        event: { $ref: "#/components/schemas/Event" }
+        recap: { anyOf: [{ $ref: "#/components/schemas/Recap" }, { type: "null" }] }
+        resources: { type: array, items: { $ref: "#/components/schemas/Resource" } }
+        tasks: { type: array, items: { $ref: "#/components/schemas/Task" } }
+    Dashboard:
+      type: object
+      required: [series, events, latest, unassigned_count, tasks_done, tasks_total]
+      properties:
+        series: { $ref: "#/components/schemas/Series" }
+        events: { type: array, items: { $ref: "#/components/schemas/Event" } }
+        latest: { anyOf: [{ $ref: "#/components/schemas/PreviousEvent" }, { type: "null" }] }
+        unassigned_count: { type: integer }
+        tasks_done: { type: integer }
+        tasks_total: { type: integer }
+    AiInput:
+      type: object
+      required: [event_id]
+      properties:
+        event_id: { type: integer }
+        question: { type: string, maxLength: 2000 }
+        recap: { $ref: "#/components/schemas/RecapInput" }
+    DraftTask:
+      type: object
+      required: [title, due_offset_days]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        due_offset_days: { type: integer, minimum: -365, maximum: 365 }
+        from_lesson: { type: string, maxLength: 1000 }
+    DraftGroup:
+      type: object
+      required: [name, tasks]
+      properties:
+        name: { type: string, maxLength: 120 }
+        tasks: { type: array, maxItems: 30, items: { $ref: "#/components/schemas/DraftTask" } }
+    DraftRole:
+      type: object
+      required: [name, slots, instruction]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        slots: { type: integer, minimum: 1, maximum: 100 }
+        instruction: { type: string, maxLength: 2000 }
+    PlanDraft:
+      type: object
+      required: [groups, roles]
+      properties:
+        groups: { type: array, maxItems: 12, items: { $ref: "#/components/schemas/DraftGroup" } }
+        roles: { type: array, maxItems: 20, items: { $ref: "#/components/schemas/DraftRole" } }
+        notice: { type: string }
+        ai_remaining: { type: integer }
+    HelperAction:
+      type: object
+      required: [type, label, payload]
+      properties:
+        type: { type: string, enum: [add_task, assign_task, add_role, draft_message] }
+        label: { type: string }
+        payload:
+          type: object
+          properties:
+            title: { type: string }
+            task_id: { type: integer }
+            volunteer_id: { type: integer }
+            name: { type: string }
+            instruction: { type: string }
+            slots_needed: { type: integer }
+            message: { type: string }
+    HelperDraft:
+      type: object
+      required: [answer, actions, notice, ai_remaining]
+      properties:
+        answer: { type: string }
+        actions: { type: array, maxItems: 4, items: { $ref: "#/components/schemas/HelperAction" } }
+        notice: { type: string }
+        ai_remaining: { type: integer }
+    StarterDraft:
+      type: object
+      required: [items, notice, ai_remaining]
+      properties:
+        items: { type: array, items: { type: string } }
+        notice: { type: string }
+        ai_remaining: { type: integer }
+    NextInput:
+      type: object
+      required: [name, starts_at, carry_lessons, carry_resources, carry_roles, carry_recurring, carry_volunteers, items]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        starts_at: { type: string }
+        carry_lessons: { type: boolean }
+        carry_resources: { type: boolean }
+        carry_roles: { type: boolean }
+        carry_recurring: { type: boolean }
+        carry_volunteers: { type: boolean }
+        items: { type: array, maxItems: 30, items: { type: string, maxLength: 1000 } }
+    Reminder:
+      type: object
+      required: [message, recipients, email_enabled, notice]
+      properties:
+        message: { type: string }
+        recipients: { type: array, items: { type: string } }
+        email_enabled: { type: boolean }
+        notice: { type: string }
+        drafts:
+          type: array
+          items: { $ref: "#/components/schemas/ReminderDraft" }
+    ReminderDraft:
+      type: object
+      required: [name, message, email]
+      properties:
+        name: { type: string }
+        message: { type: string }
+        email: { type: [string, "null"] }
+    PublicEvent:
+      type: object
+      required: [name, starts_at, timezone, city, place_text, signups_open, event_day_notes, day_of_contact_text]
+      properties:
+        name: { type: string }
+        starts_at: { type: string }
+        timezone: { type: string }
+        city: { type: string }
+        place_text: { type: string }
+        signups_open: { type: boolean }
+        event_day_notes: { type: string }
+        day_of_contact_text: { type: string }
+    SignupPage:
+      type: object
+      required: [event, roles]
+      properties:
+        event: { $ref: "#/components/schemas/PublicEvent" }
+        roles: { type: array, items: { $ref: "#/components/schemas/Role" } }
+    SignupInput:
+      type: object
+      required: [name, role_id, email_consent, ask_again]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        role_id: { type: integer }
+        email: { type: string, maxLength: 254 }
+        email_consent: { type: boolean }
+        ask_again: { type: boolean }
+        website: { type: string, maxLength: 500 }
+    JoinResult:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+    VolunteerPage:
+      type: object
+      required: [name, status, role, event, tasks, event_day]
+      properties:
+        name: { type: string }
+        status: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        event: { $ref: "#/components/schemas/PublicEvent" }
+        tasks: { type: array, items: { $ref: "#/components/schemas/Task" } }
+        event_day: { type: boolean }
+    TickInput:
+      type: object
+      required: [done]
+      properties:
+        done: { type: boolean }

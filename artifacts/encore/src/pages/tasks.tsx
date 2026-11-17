@@ -1,0 +1,415 @@
+import { useMemo, useState, type DragEvent, type FormEvent } from "react";
+import { useParams } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useCreateTask, useUpdateTask, useDeleteTask, useCreateRole, useAskHelper,
+  getGetEventQueryKey, getGetSessionQueryKey,
+  type EventBundle, type Task, type TaskStatus, type TaskUpdate, type HelperDraft, type HelperAction,
+} from "@workspace/api-client-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub,
+  DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Shell, PageHeader } from "@/components/shell";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { MessageDialog } from "@/components/message-dialog";
+import { Avatar, ErrorPanel, Icon, Skel, Star } from "@/components/brand";
+import { GROUPS, dueLabel, errorMessage, errorStatus, fmtDate, sourceChip } from "@/lib/encore";
+import { useEventBundle } from "@/lib/use-event";
+import { useEncore } from "@/lib/session";
+import { useToast } from "@/hooks/use-toast";
+
+const COLS: { id: TaskStatus; label: string }[] = [
+  { id: "todo", label: "To do" }, { id: "doing", label: "In progress" }, { id: "done", label: "Done" },
+];
+
+function assigneeKey(t: Pick<Task, "assignee_user_id" | "assignee_volunteer_id" | "role_id">) {
+  if (t.assignee_user_id) return `u:${t.assignee_user_id}`;
+  if (t.assignee_volunteer_id) return `v:${t.assignee_volunteer_id}`;
+  if (t.role_id) return `r:${t.role_id}`;
+  return "none";
+}
+function assigneeFields(key: string): Pick<TaskUpdate, "assignee_user_id" | "assignee_volunteer_id" | "role_id"> {
+  const [kind, raw] = key.split(":");
+  const n = Number(raw);
+  return {
+    assignee_user_id: kind === "u" ? n : null,
+    assignee_volunteer_id: kind === "v" ? n : null,
+    role_id: kind === "r" ? n : null,
+  };
+}
+function assigneeName(b: EventBundle, t: Task): string | null {
+  if (t.assignee_user_id) { const u = b.organizers.find((o) => o.id === t.assignee_user_id); return u ? (u.name || u.email) : "Organizer"; }
+  if (t.assignee_volunteer_id) return b.volunteers.find((v) => v.id === t.assignee_volunteer_id)?.name ?? "Volunteer";
+  if (t.role_id) { const r = b.roles.find((x) => x.id === t.role_id); return r ? `${r.name} role` : null; }
+  return null;
+}
+
+function AssigneeOptions({ b }: { b: EventBundle }) {
+  return (
+    <>
+      <option value="none">Unassigned</option>
+      {b.organizers.length > 0 && <optgroup label="Organizers">{b.organizers.map((o) => <option key={o.id} value={`u:${o.id}`}>{o.name || o.email}</option>)}</optgroup>}
+      {b.volunteers.length > 0 && <optgroup label="Volunteers">{b.volunteers.map((v) => <option key={v.id} value={`v:${v.id}`}>{v.name}</option>)}</optgroup>}
+      {b.roles.length > 0 && <optgroup label="Whole role">{b.roles.map((r) => <option key={r.id} value={`r:${r.id}`}>{r.name}</option>)}</optgroup>}
+    </>
+  );
+}
+
+type FormState = { title: string; group: string; status: TaskStatus; assignee: string; due: string; recurring: boolean };
+
+function TaskDialog({ b, open, onOpenChange, task, defaultStatus, onSave, saving }: {
+  b: EventBundle; open: boolean; onOpenChange: (v: boolean) => void; task: Task | null; defaultStatus: TaskStatus;
+  onSave: (f: FormState) => void; saving: boolean;
+}) {
+  const init: FormState = task
+    ? { title: task.title, group: task.group_name || GROUPS[0], status: task.status, assignee: assigneeKey(task), due: task.due_date?.slice(0, 10) ?? "", recurring: task.recurring }
+    : { title: "", group: GROUPS[0], status: defaultStatus, assignee: "none", due: "", recurring: false };
+  const [f, setF] = useState<FormState>(init);
+  const [err, setErr] = useState("");
+  const [lastKey, setLastKey] = useState<string>("");
+  const key = `${open}-${task?.id ?? "new"}-${defaultStatus}`;
+  if (key !== lastKey) { setLastKey(key); setF(init); setErr(""); }
+  const submit = (e: FormEvent) => { e.preventDefault(); if (!f.title.trim()) { setErr("Give the task a title."); return; } onSave(f); };
+  const groups = Array.from(new Set([...GROUPS, f.group]));
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="border-0 rounded-[20px] p-0 max-w-[520px]" style={{ background: "#FEFCF0" }}>
+        <form onSubmit={submit} className="p-7 space-y-4">
+          <div>
+            <div className="mono-label mb-1">{task ? "Edit task" : "New task"}</div>
+            <DialogTitle className="font-display text-[26px] font-normal">{task ? "Tune this task" : "Add a task"}</DialogTitle>
+            <DialogDescription className="sr-only">Task details</DialogDescription>
+          </div>
+          <div>
+            <label className="field-label" htmlFor="t-title">Title</label>
+            <input id="t-title" className="field" value={f.title} maxLength={300} onChange={(e) => setF({ ...f, title: e.target.value })} aria-invalid={!!err} autoFocus data-testid="input-task-title" />
+            {err && <p className="field-error">{err}</p>}
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="field-label" htmlFor="t-group">Group</label>
+              <select id="t-group" className="field" value={f.group} onChange={(e) => setF({ ...f, group: e.target.value })} data-testid="select-task-group">{groups.map((g) => <option key={g}>{g}</option>)}</select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="t-status">Column</label>
+              <select id="t-status" className="field" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as TaskStatus })} data-testid="select-task-status">{COLS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="t-assignee">Assignee</label>
+              <select id="t-assignee" className="field" value={f.assignee} onChange={(e) => setF({ ...f, assignee: e.target.value })} data-testid="select-task-assignee"><AssigneeOptions b={b} /></select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="t-due">Due date</label>
+              <input id="t-due" type="date" className="field" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} data-testid="input-task-due" />
+            </div>
+          </div>
+          <label className="flex items-center justify-between gap-4 rounded-xl px-4 py-3" style={{ background: "rgba(55,68,46,0.06)" }}>
+            <span><span className="font-semibold block text-[14px]">Recurring</span><span className="text-[13px] text-muted-ink">Offer this task again when you create the next event.</span></span>
+            <Switch checked={f.recurring} onCheckedChange={(v) => setF({ ...f, recurring: v })} data-testid="switch-task-recurring" />
+          </label>
+          <div className="flex justify-end gap-3 pt-1">
+            <button type="button" className="btn btn-secondary" onClick={() => onOpenChange(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={saving} data-testid="button-save-task">{saving ? "Saving" : task ? "Save task" : "Add task"}</button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TaskCard({ b, t, index, colLen, onMove, onReorder, onEdit, onAssign, onDelete, onDragStart, onDropOn, dragging }: {
+  b: EventBundle; t: Task; index: number; colLen: number;
+  onMove: (s: TaskStatus) => void; onReorder: (dir: -1 | 1) => void; onEdit: () => void; onAssign: (key: string) => void; onDelete: () => void;
+  onDragStart: () => void; onDropOn: () => void; dragging: boolean;
+}) {
+  const chip = sourceChip(t.source, t.source_note, b.previous?.event.name);
+  const who = assigneeName(b, t);
+  const done = t.status === "done";
+  return (
+    <article
+      draggable onDragStart={(e: DragEvent) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(t.id)); onDragStart(); }}
+      onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDropOn(); }}
+      className={`glass !p-3.5 cursor-grab active:cursor-grabbing transition-all duration-200 hover:-translate-y-0.5 ${dragging ? "opacity-40" : ""}`}
+      data-testid={`card-task-${t.id}`}
+    >
+      <div className="flex items-start gap-2">
+        <div className={`flex-1 min-w-0 text-[15px] font-semibold leading-snug ${done ? "line-through text-muted-ink" : ""}`} data-testid={`text-task-title-${t.id}`}>{t.title}</div>
+        <DropdownMenu>
+          <DropdownMenuTrigger className="w-9 h-9 -mr-1.5 -mt-1.5 shrink-0 rounded-full inline-flex items-center justify-center text-muted-ink hover:bg-black/5" aria-label={`Actions for ${t.title}`} data-testid={`button-task-menu-${t.id}`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52 rounded-xl" style={{ background: "#FEFCF0" }}>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger data-testid={`menu-move-${t.id}`}>Move to…</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="rounded-xl" style={{ background: "#FEFCF0" }}>
+                {COLS.map((c) => <DropdownMenuItem key={c.id} disabled={c.id === t.status} onSelect={() => onMove(c.id)} data-testid={`menu-move-${t.id}-${c.id}`}>{c.label}</DropdownMenuItem>)}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuItem disabled={index === 0} onSelect={() => onReorder(-1)} data-testid={`menu-up-${t.id}`}>Move up</DropdownMenuItem>
+            <DropdownMenuItem disabled={index === colLen - 1} onSelect={() => onReorder(1)} data-testid={`menu-down-${t.id}`}>Move down</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger data-testid={`menu-assign-${t.id}`}>Assign</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="rounded-xl max-h-[320px] overflow-auto" style={{ background: "#FEFCF0" }}>
+                <DropdownMenuItem onSelect={() => onAssign("none")}>Unassigned</DropdownMenuItem>
+                {b.organizers.length > 0 && <DropdownMenuLabel className="mono-label">Organizers</DropdownMenuLabel>}
+                {b.organizers.map((o) => <DropdownMenuItem key={`u${o.id}`} onSelect={() => onAssign(`u:${o.id}`)}>{o.name || o.email}</DropdownMenuItem>)}
+                {b.volunteers.length > 0 && <DropdownMenuLabel className="mono-label">Volunteers</DropdownMenuLabel>}
+                {b.volunteers.map((v) => <DropdownMenuItem key={`v${v.id}`} onSelect={() => onAssign(`v:${v.id}`)}>{v.name}</DropdownMenuItem>)}
+                {b.roles.length > 0 && <DropdownMenuLabel className="mono-label">Whole role</DropdownMenuLabel>}
+                {b.roles.map((r) => <DropdownMenuItem key={`r${r.id}`} onSelect={() => onAssign(`r:${r.id}`)}>{r.name}</DropdownMenuItem>)}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuItem onSelect={onEdit} data-testid={`menu-edit-${t.id}`}>Edit</DropdownMenuItem>
+            <DropdownMenuItem onSelect={onDelete} className="text-[#8A3426]" data-testid={`menu-delete-${t.id}`}>Delete</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {(chip || t.recurring) && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {chip && <span className={`chip ${chip.cls}`} title={t.source_note || undefined}>{chip.label}</span>}
+          {t.recurring && <span className="chip chip-todo">Recurring</span>}
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-2 mt-3">
+        {who ? (
+          <span className="flex items-center gap-1.5 min-w-0"><Avatar name={who} size={26} /><span className="text-[13px] truncate" style={{ color: "#3D3D3A" }}>{who}</span></span>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger className="text-[12px] font-semibold rounded-full px-2.5 py-0.5 hover:bg-white/60" style={{ color: "#37442E", border: "1.5px dashed #37442E" }} data-testid={`button-quick-assign-${t.id}`}>+ Assign</DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="rounded-xl max-h-[300px] overflow-auto" style={{ background: "#FEFCF0" }}>
+              {b.organizers.map((o) => <DropdownMenuItem key={`u${o.id}`} onSelect={() => onAssign(`u:${o.id}`)}>{o.name || o.email}</DropdownMenuItem>)}
+              {b.volunteers.map((v) => <DropdownMenuItem key={`v${v.id}`} onSelect={() => onAssign(`v:${v.id}`)}>{v.name} <span className="text-muted-ink ml-1 text-[12px]">volunteer</span></DropdownMenuItem>)}
+              {b.roles.map((r) => <DropdownMenuItem key={`r${r.id}`} onSelect={() => onAssign(`r:${r.id}`)}>{r.name} <span className="text-muted-ink ml-1 text-[12px]">role</span></DropdownMenuItem>)}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {t.due_date && <span className="text-[12px] text-muted-ink whitespace-nowrap">Due {dueLabel(t.due_date)}</span>}
+      </div>
+    </article>
+  );
+}
+
+type ActState = { applied?: boolean; title?: string; name?: string; slots?: number; instruction?: string };
+
+function HelperPanel({ b }: { b: EventBundle }) {
+  const id = b.event.id;
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { session } = useEncore();
+  const ask = useAskHelper();
+  const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
+  const createRole = useCreateRole();
+  const [question, setQuestion] = useState("");
+  const [result, setResult] = useState<HelperDraft | null>(null);
+  const [acts, setActs] = useState<ActState[]>([]);
+  const [msg, setMsg] = useState<string | null>(null);
+  const key = getGetEventQueryKey(id);
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!question.trim()) return;
+    ask.mutate({ data: { event_id: id, question: question.trim() } }, {
+      onSuccess: (r) => {
+        setResult(r);
+        setActs(r.actions.map((a) => ({ title: a.payload.title, name: a.payload.name, slots: a.payload.slots_needed ?? 1, instruction: a.payload.instruction ?? "" })));
+        qc.invalidateQueries({ queryKey: getGetSessionQueryKey() });
+      },
+      onError: (er) => toast({ title: "The helper could not answer", description: errorMessage(er), variant: "destructive" }),
+    });
+  };
+  const mark = (i: number) => setActs((a) => a.map((x, j) => (j === i ? { ...x, applied: true } : x)));
+  const apply = (a: HelperAction, i: number) => {
+    const s = acts[i];
+    const done = (label: string) => { mark(i); qc.invalidateQueries({ queryKey: key }); toast({ title: label }); };
+    const fail = (er: unknown) => toast({ title: "Could not apply", description: errorMessage(er), variant: "destructive" });
+    if (a.type === "add_task") {
+      if (!s.title?.trim()) return;
+      createTask.mutate({ id, data: { title: s.title.trim(), status: "todo" } }, { onSuccess: () => done("Task added"), onError: fail });
+    } else if (a.type === "assign_task" && a.payload.task_id) {
+      updateTask.mutate({ id, itemId: a.payload.task_id, data: { assignee_volunteer_id: a.payload.volunteer_id ?? null, assignee_user_id: null } }, { onSuccess: () => done("Assigned"), onError: fail });
+    } else if (a.type === "add_role") {
+      if (!s.name?.trim()) return;
+      createRole.mutate({ id, data: { name: s.name.trim(), slots_needed: Math.max(1, Math.min(100, s.slots || 1)), instruction: s.instruction ?? "" } }, { onSuccess: () => done("Role added"), onError: fail });
+    } else if (a.type === "draft_message") {
+      setMsg(a.payload.message ?? "");
+    }
+  };
+  const busy = createTask.isPending || updateTask.isPending || createRole.isPending;
+
+  return (
+    <section className="ai-glass relative" data-testid="panel-helper">
+      <Star size={12} className="absolute top-4 right-4" />
+      <div className="font-display text-[20px] leading-tight flex items-center gap-2"><Icon name="spark" size={18} /> Ask the helper</div>
+      <p className="text-[13px] mt-1 mb-3">It suggests. Nothing changes until you click.</p>
+      <form onSubmit={submit}>
+        <textarea className="field text-[14px]" rows={3} value={question} maxLength={2000} onChange={(e) => setQuestion(e.target.value)} placeholder="What am I forgetting for event day?" style={{ background: "rgba(255,255,255,0.75)" }} data-testid="input-helper-question" />
+        <button type="submit" className="btn btn-primary btn-sm mt-2.5 w-full" disabled={ask.isPending || !question.trim()} data-testid="button-ask">{ask.isPending ? "Thinking" : "Ask"}</button>
+      </form>
+      <div className="text-[12px] mt-2 text-center font-mono-ui uppercase tracking-[0.1em]" style={{ color: "#5A4A0A" }} data-testid="text-helper-remaining">{(result?.ai_remaining ?? session?.ai_remaining) ?? 0} uses left this month</div>
+      {ask.isPending && <div className="mt-3 space-y-2"><div className="skel h-14" /><div className="skel h-10" /></div>}
+      {result && !ask.isPending && (
+        <div className="mt-4 space-y-2.5">
+          {result.notice && <p className="text-[12px] italic" data-testid="text-helper-notice">{result.notice}</p>}
+          <div className="rounded-xl p-3 text-[14px] leading-relaxed whitespace-pre-wrap" style={{ background: "rgba(255,255,255,0.7)" }} data-testid="text-helper-answer">{result.answer}</div>
+          {result.actions.slice(0, 4).map((a, i) => {
+            const s = acts[i] ?? {};
+            return (
+              <div key={i} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(201,168,76,0.6)" }} data-testid={`card-helper-action-${i}`}>
+                <div className="text-[12px] font-mono-ui uppercase tracking-[0.1em] mb-1.5" style={{ color: "#5A4A0A" }}>{a.type.replace("_", " ")}</div>
+                {a.type === "add_task" && !s.applied && <input className="field field-compact mb-2" value={s.title ?? ""} onChange={(e) => setActs((x) => x.map((y, j) => j === i ? { ...y, title: e.target.value } : y))} aria-label="Task title" />}
+                {a.type === "add_role" && !s.applied && (
+                  <div className="space-y-1.5 mb-2">
+                    <input className="field field-compact" value={s.name ?? ""} onChange={(e) => setActs((x) => x.map((y, j) => j === i ? { ...y, name: e.target.value } : y))} aria-label="Role name" />
+                    <div className="flex gap-1.5">
+                      <input type="number" min={1} max={100} className="field field-compact w-20" value={s.slots ?? 1} onChange={(e) => setActs((x) => x.map((y, j) => j === i ? { ...y, slots: Number(e.target.value) } : y))} aria-label="Slots" />
+                      <input className="field field-compact flex-1" value={s.instruction ?? ""} placeholder="Instruction" onChange={(e) => setActs((x) => x.map((y, j) => j === i ? { ...y, instruction: e.target.value } : y))} aria-label="Instruction" />
+                    </div>
+                  </div>
+                )}
+                {s.applied ? (
+                  <span className="chip chip-done"><Icon name="check" size={12} /> Applied</span>
+                ) : (
+                  <button className="btn btn-sm w-full" style={{ background: "#37442E", color: "#fff" }} disabled={busy} onClick={() => apply(a, i)} data-testid={`button-apply-action-${i}`}>{a.label}</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <MessageDialog open={msg !== null} onOpenChange={(v) => !v && setMsg(null)} title="Message draft" initial={msg ?? ""} subject={b.event.name} />
+    </section>
+  );
+}
+
+export default function TasksPage() {
+  const params = useParams<{ id: string }>();
+  const id = Number(params.id);
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const q = useEventBundle(id);
+  const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
+  const deleteTask = useDeleteTask();
+  const key = getGetEventQueryKey(id);
+
+  const [mobileCol, setMobileCol] = useState<TaskStatus>("todo");
+  const [dialog, setDialog] = useState<{ task: Task | null; status: TaskStatus } | null>(null);
+  const [confirmDel, setConfirmDel] = useState<Task | null>(null);
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [overCol, setOverCol] = useState<TaskStatus | null>(null);
+
+  const b = q.data;
+  const columns = useMemo(() => {
+    const m: Record<TaskStatus, Task[]> = { todo: [], doing: [], done: [] };
+    for (const t of b?.tasks ?? []) (m[t.status] ?? m.todo).push(t);
+    for (const k of Object.keys(m) as TaskStatus[]) m[k].sort((a, c) => a.sort_order - c.sort_order || a.id - c.id);
+    return m;
+  }, [b?.tasks]);
+
+  const patch = (fn: (ts: Task[]) => Task[]) => qc.setQueryData<EventBundle>(key, (old) => (old ? { ...old, tasks: fn(old.tasks) } : old));
+  const fail = (e: unknown) => { toast({ title: "That did not save", description: errorMessage(e), variant: "destructive" }); qc.invalidateQueries({ queryKey: key }); };
+
+  const moveTo = (t: Task, status: TaskStatus, index?: number) => {
+    const col = columns[status].filter((x) => x.id !== t.id);
+    const at = index === undefined ? col.length : Math.max(0, Math.min(index, col.length));
+    col.splice(at, 0, { ...t, status });
+    const changes = col.map((x, i) => ({ x, i })).filter(({ x, i }) => x.id === t.id || x.sort_order !== i);
+    patch((ts) => ts.map((x) => { const c = changes.find((ch) => ch.x.id === x.id); return c ? { ...x, status: x.id === t.id ? status : x.status, sort_order: c.i } : x; }));
+    Promise.all(changes.map(({ x, i }) => updateTask.mutateAsync({ id, itemId: x.id, data: x.id === t.id ? { status, sort_order: i } : { sort_order: i } })))
+      .then(() => { if (t.status !== status) toast({ title: `Moved to ${COLS.find((c) => c.id === status)?.label}` }); qc.invalidateQueries({ queryKey: key }); })
+      .catch(fail);
+  };
+  const assign = (t: Task, k: string) => {
+    const fields = assigneeFields(k);
+    patch((ts) => ts.map((x) => (x.id === t.id ? { ...x, ...fields } : x)));
+    updateTask.mutate({ id, itemId: t.id, data: fields }, { onSuccess: () => { toast({ title: k === "none" ? "Unassigned" : "Assigned" }); qc.invalidateQueries({ queryKey: key }); }, onError: fail });
+  };
+  const save = (f: FormState) => {
+    const data = { title: f.title.trim(), group_name: f.group, status: f.status, due_date: f.due || null, recurring: f.recurring, ...assigneeFields(f.assignee) };
+    const done = () => { setDialog(null); qc.invalidateQueries({ queryKey: key }); };
+    if (dialog?.task) updateTask.mutate({ id, itemId: dialog.task.id, data }, { onSuccess: () => { toast({ title: "Task saved" }); done(); }, onError: fail });
+    else createTask.mutate({ id, data: { ...data, sort_order: columns[f.status].length } }, { onSuccess: () => { toast({ title: "Task added" }); done(); }, onError: fail });
+  };
+  const remove = (t: Task) => {
+    setConfirmDel(null);
+    patch((ts) => ts.filter((x) => x.id !== t.id));
+    deleteTask.mutate({ id, itemId: t.id }, { onSuccess: () => { toast({ title: "Task deleted" }); qc.invalidateQueries({ queryKey: key }); }, onError: fail });
+  };
+  const onColDrop = (status: TaskStatus, index?: number) => {
+    setOverCol(null);
+    const t = b?.tasks.find((x) => x.id === dragId);
+    setDragId(null);
+    if (t) moveTo(t, status, index);
+  };
+
+  if (q.isLoading) return <Shell><div data-testid="status-loading-tasks"><Skel className="h-10 w-48 mb-3" /><Skel className="h-4 w-72 mb-8" /><div className="grid min-[900px]:grid-cols-3 gap-4">{[0, 1, 2].map((i) => <div key={i} className="space-y-3"><Skel className="h-6 w-24" /><Skel className="h-28 !rounded-2xl" /><Skel className="h-28 !rounded-2xl" /></div>)}</div></div></Shell>;
+  if (q.isError || !b) {
+    const nf = errorStatus(q.error) === 404 || errorStatus(q.error) === 403;
+    return <Shell><ErrorPanel title={nf ? "Event not found" : "That did not load"} message={nf ? "This event does not exist or belongs to someone else." : errorMessage(q.error)} onRetry={nf ? undefined : () => void q.refetch()} /></Shell>;
+  }
+
+  return (
+    <Shell event={{ id: b.event.id, name: b.event.name }}>
+      <PageHeader
+        title="Tasks"
+        subtitle={`${b.event.name} · ${fmtDate(b.event.starts_at, b.event.timezone)} · ${b.tasks.length} task${b.tasks.length === 1 ? "" : "s"}`}
+        actions={<button className="btn btn-primary" onClick={() => setDialog({ task: null, status: "todo" })} data-testid="button-new-task"><Icon name="plus" size={16} /> New task</button>}
+      />
+      <div className="min-[900px]:hidden flex p-1 rounded-[12px] mb-4" style={{ background: "rgba(31,30,29,0.07)" }} role="tablist">
+        {COLS.map((c) => (
+          <button key={c.id} role="tab" aria-selected={mobileCol === c.id} onClick={() => setMobileCol(c.id)} className="flex-1 h-9 rounded-[9px] text-[14px] font-semibold transition-all" style={mobileCol === c.id ? { background: "#fff", color: "#23291E", boxShadow: "0 1px 4px rgba(55,68,46,0.12)" } : { color: "#586050" }} data-testid={`tab-col-${c.id}`}>
+            {c.label} <span className="text-muted-ink font-normal">{columns[c.id].length}</span>
+          </button>
+        ))}
+      </div>
+      <div className="grid min-[1200px]:grid-cols-[1fr_300px] gap-5 items-start">
+        <div className="grid min-[900px]:grid-cols-3 gap-4">
+          {COLS.map((c) => (
+            <section
+              key={c.id}
+              className={`${mobileCol === c.id ? "flex" : "hidden"} min-[900px]:flex flex-col gap-3 rounded-[18px] p-2 -m-2 transition-colors ${overCol === c.id ? "bg-[rgba(55,68,46,0.07)]" : ""}`}
+              onDragOver={(e) => { e.preventDefault(); if (overCol !== c.id) setOverCol(c.id); }}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOverCol(null); }}
+              onDrop={(e) => { e.preventDefault(); onColDrop(c.id); }}
+              aria-label={c.label} data-testid={`column-${c.id}`}
+            >
+              <div className="flex items-center justify-between px-1">
+                <h2 className="font-display text-[18px]">{c.label}</h2>
+                <span className="font-mono-ui text-[12px] text-muted-ink">{columns[c.id].length}</span>
+              </div>
+              {columns[c.id].map((t, i) => (
+                <TaskCard key={t.id} b={b} t={t} index={i} colLen={columns[c.id].length}
+                  onMove={(s) => moveTo(t, s)}
+                  onReorder={(d) => moveTo(t, c.id, i + d)}
+                  onEdit={() => setDialog({ task: t, status: t.status })}
+                  onAssign={(k) => assign(t, k)}
+                  onDelete={() => setConfirmDel(t)}
+                  onDragStart={() => setDragId(t.id)}
+                  onDropOn={() => onColDrop(c.id, i)}
+                  dragging={dragId === t.id}
+                />
+              ))}
+              {columns[c.id].length === 0 && (
+                <div className="rounded-[16px] border-[1.5px] border-dashed px-4 py-6 text-center text-[14px] text-muted-ink" style={{ borderColor: "rgba(31,30,29,0.18)" }}>
+                  {c.id === "todo" ? "Nothing waiting. Add a task or draft a plan." : c.id === "doing" ? "Drag a card here when someone starts it." : "Finished tasks land here."}
+                </div>
+              )}
+              <button className="h-11 rounded-[14px] border-[1.5px] border-dashed text-[14px] font-semibold flex items-center justify-center gap-1.5 transition-colors hover:bg-white/60" style={{ borderColor: "#9C9A92", color: "#3D3D3A", background: "rgba(255,255,255,0.4)" }} onClick={() => setDialog({ task: null, status: c.id })} data-testid={`button-add-task-${c.id}`}>
+                <Icon name="plus" size={15} /> Add task
+              </button>
+            </section>
+          ))}
+        </div>
+        <aside className="min-[1200px]:sticky min-[1200px]:top-7"><HelperPanel b={b} /></aside>
+      </div>
+
+      <TaskDialog b={b} open={!!dialog} onOpenChange={(v) => !v && setDialog(null)} task={dialog?.task ?? null} defaultStatus={dialog?.status ?? "todo"} onSave={save} saving={createTask.isPending || updateTask.isPending} />
+      <ConfirmDialog open={!!confirmDel} onOpenChange={(v) => !v && setConfirmDel(null)} title="Delete this task?" description={confirmDel ? `"${confirmDel.title}" will be removed from the board and from any volunteer checklist.` : ""} confirmLabel="Delete" danger onConfirm={() => confirmDel && remove(confirmDel)} />
+    </Shell>
+  );
+}

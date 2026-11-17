@@ -1,45 +1,38 @@
-# [Project name]
+# Encore
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+An execution hub for small, recurring volunteer-run community events. Volunteers never need accounts.
 
-## Run & Operate
+## Product rules
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- The supplied screen designs govern appearance; the supplied PRD governs behavior.
+- Follow PRD Section 7's exact fonts, colors and Echo logo. Use the uploaded brand assets.
+- Build P0 in phase order; P1 is gated by the complete P0 self-test. Never build P2 or the PRD's non-goals.
+- Organizer authentication explicitly uses email/password, scrypt hashes and PostgreSQL-backed sessions. Do not replace it with a different auth system without asking.
+- Paid AI is off unless `AI_ENABLED=true` and `LLM_API_KEY` is present. Do not spend API credits during development/tests.
+- Email sending is not part of the current P0 build. Copy and mailto must always work.
+- No real people, venues or prices in seeds. Real event data is entered by the organizer in the published app.
 
-## Stack
+## Run and verify
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Managed workflows: `artifacts/api-server: API Server` and `artifacts/encore: web`.
+- `pnpm run typecheck`
+- `pnpm --filter @workspace/api-server run self-test` — API phase checks with isolated fictional fixtures; cleans up its test users.
+- `pnpm --filter @workspace/api-server run db:setup:dev` — additive development-only schema setup.
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate after every OpenAPI change.
 
-## Where things live
+## Sources
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- App: `artifacts/encore`; API: `artifacts/api-server`.
+- API contracts: `lib/api-spec/openapi.yaml`.
+- SQL schema sources: `lib/db/schema-phase0.sql` through `schema-phase3.sql`; access through the existing `@workspace/db` PostgreSQL pool with parameterized SQL.
+- Design/behavior source: `attached_assets/Encore_PRD_v2_1794938236144.md` and uploaded screen HTML.
+- Setup, decisions and scope: `README.md`.
 
-## Architecture decisions
+## Security and operations
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Every organizer access goes through `ownedSeries`/`ownedEvent`; nested resources also constrain event IDs.
+- Volunteers get 192-bit private tokens. Never log or put private links in shared reminder messages.
+- CSRF token required on organizer writes; session cookies HttpOnly, SameSite=Lax and Secure in production.
+- Sign-up capacity uses an event-row database lock; limits live in PostgreSQL for Autoscale.
+- Publish applies managed production schema changes. Never add startup DDL or production migration scripts.
+- Autoscale target is configured. Set Max machines to 1 in Publishing machine configuration before first publish.

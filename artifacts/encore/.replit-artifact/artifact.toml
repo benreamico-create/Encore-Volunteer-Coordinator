@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Encore"
+description = "An execution hub for recurring community events: organizer plans, volunteer sign-up without accounts, event-day checklists, and recaps that improve the next event."
+version = "1.0.0"
+id = "artifacts/encore"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23330
+
+[services.development]
+run = "pnpm --filter @workspace/encore run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/encore", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/encore/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23330"
+BASE_PATH = "/"

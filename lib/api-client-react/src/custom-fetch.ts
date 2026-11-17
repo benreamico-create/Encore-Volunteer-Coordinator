@@ -336,6 +336,10 @@ export async function customFetch<T = unknown>(
   }
 
   const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
+  if (typeof document !== "undefined" && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+    const csrf = document.cookie.split("; ").find((part) => part.startsWith("encore.csrf="));
+    if (csrf) headers.set("x-csrf-token", decodeURIComponent(csrf.slice("encore.csrf=".length)));
+  }
 
   if (
     typeof init.body === "string" &&
@@ -360,7 +364,7 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  const response = await fetch(input, { credentials: "same-origin", ...init, method, headers });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

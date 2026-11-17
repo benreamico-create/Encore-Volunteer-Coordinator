@@ -1,0 +1,1 @@
+- [Encore build rules](encore-build-rules.md) — supplied designs govern look, PRD governs behavior; P0 phase gates and conservative paid-AI use.
