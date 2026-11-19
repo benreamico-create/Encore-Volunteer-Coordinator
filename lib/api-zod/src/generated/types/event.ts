@@ -28,4 +28,7 @@ export type Event = EventInput & ({
   plan_accepted: boolean;
   carried_lesson?: string;
   carried_didnt?: string;
+  updated_at: Date;
+  /** @nullable */
+  updated_by_name: string | null;
 });

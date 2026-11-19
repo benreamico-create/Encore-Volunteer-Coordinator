@@ -34,6 +34,8 @@ The frontend runs at `/`; API requests use `/api`. All data persists in PostgreS
 | `AI_MONTHLY_LIMIT` | No | Default 150 provider attempts per organizer per UTC calendar month. Set to a much smaller number, or 0, for tighter spending control. This is a request count, not a dollar cap. |
 | `RESEND_API_KEY` | No | Reserved for P1 email sending; not used by the P0 implementation. |
 | `EMAIL_FROM` | No | Reserved for P1; must be an address on a domain you own and verify with Resend. |
+| `GOOGLE_CLIENT_ID` | No | Reserved for Tier 4 Google sign-in; email/password remains available. |
+| `GOOGLE_CLIENT_SECRET` | No | Server-side OAuth secret paired with `GOOGLE_CLIENT_ID`. |
 
 Never paste credentials into chat, source code, screenshots or README files.
 
@@ -48,13 +50,13 @@ Email sending is off in this P0 build. Reminders can be copied or opened in the 
 ## Main flows
 
 - `/` — organizer signup/login and logout through the app shell.
-- `/app` — series switcher, events/progress, fictional demo loader and carried-forward context.
+- `/app` — series switcher, events/progress, fictional demo loader, carried-forward context and a **Create next event** action on finished event cards.
 - `/app/series/:id/events/new` — event details, description and purpose wizard.
-- `/app/events/:id/plan` — editable draft tasks/roles, explicit acceptance, and **Edit event information** for the overview (name, date/time, city/place, guests, budget, description and purpose).
+- `/app/events/:id/plan` — editable draft plan and, after acceptance, saved event details, tasks and roles. Date changes offer an explicit due-date shift; role capacity cannot be reduced below sign-ups.
 - `/app/events/:id/tasks` — three-column task board with cards draggable from the whole card body by mouse, highlighted drop columns, keyboard controls, visible per-card Status selectors and Move to menus, assignment and recurring work. On phones, drag from the title handle so normal page scrolling remains easy.
 - `/app/events/:id/volunteers` — role management, link/toggles, volunteers, day-of details and reminder drafts.
-- `/app/events/:id/recap` — typed attendance, show rate, ratings, notes, reusable resources and starter draft.
-- `/app/events/:id/next` — selected-only recap carry-over.
+- `/app/events/:id/wrapup` — notes, reusable resources and next-event starter; old `/app/events/:id/recap` links redirect here. Legacy count and rating columns remain stored, are hidden from this screen, and retain their values when notes are saved.
+- `/app/events/:id/next` — selected-only wrap-up carry-over.
 - `/join/:slug` — public volunteer signup without login.
 - `/v/:token` — private confirmation and checklist; event-day view on the event's date or by organizer toggle.
 
@@ -78,7 +80,15 @@ The API self-test runs phase checks in order and deletes its own randomized fict
 - Recap persistence, computed show rate, template starter, selected carry-over, fresh volunteer tokens and ask-again/email consent rules.
 - Private reminder drafts with sending off and idempotent fictional demo loading.
 
-These are API integration checks, not an end-to-end browser certification. The complete PRD 0.6 browser checklist (including drag/touch interactions and every authenticated screen at both 375px and 1280px) remains the release gate before P1. Do not treat a typecheck as proof of those interactions.
+These are API integration checks, not an end-to-end browser certification. The complete PRD 0.6 browser checklist (including drag/touch interactions and every authenticated screen at both 375px and 1280px) remains the release gate before the next v2.1 tier. Do not treat a typecheck as proof of those interactions.
+
+### v2.1 Tier 1 status
+
+Tier 1 updates the existing app in place. The 72px desktop rail and mobile bottom tabs are live; unfinished Blueprint, Chat and Sponsors destinations are clearly marked as coming soon. The database update only adds event edit metadata and keeps the existing recap table and columns. The saved Plan view edits existing records and adds suggestions without replacing accepted work. The new plan suggestion endpoint applies selected additions in one transaction. No Blueprint, Chat, announcements, sponsor board or Google sign-in implementation is included in Tier 1.
+
+To check this tier, use the `/app` series dashboard, open a finished event and select **Create next event**; open a planned event and edit its Plan; edit a due-date task, then change the event date and choose whether to shift unfinished task deadlines; lower role capacity below existing sign-ups and confirm it is blocked; open **Wrap-up** and save notes; visit the old `/recap` URL and confirm it redirects; resize below 900px to see the bottom tabs. The update prompt's one-time "Update demo data" action is deferred until the later v2.1 demo features exist.
+
+Tier 1 verification passed `pnpm run typecheck`, all four API self-test phases, and the Encore production build. The screenshot check covered the signup/login screen only; authenticated Plan, Wrap-up, and mobile screens still need visual review. No live AI calls or emails were sent.
 
 Initial verification passed all four API phase checks and the full project typecheck. Screenshots confirmed signup/login at 1280px and 375px, volunteer signup at 375px and 1280px (including a full role), and volunteer confirmation/event-day views at 375px. Temporary visual-test data was removed afterwards. No paid model calls or emails were sent.
 
@@ -93,10 +103,10 @@ Event-editor/task-board regression verification also passed all four API phases,
 5. **Conflicting template task counts:** the exact PRD 10.4 fallback has 17 tasks, although 10.1 constrains model output to 8–16. The exact fallback template takes precedence for template mode; paid model output is constrained to 8–16.
 6. **Acceptance and capacity are atomic:** accepting a plan twice does not duplicate work. Signup and role-capacity edits lock the event row in a database transaction to prevent overbooking across Autoscale instances.
 7. **Carry-over is selected, not automatic:** lessons/notes, use-again resources, roles, recurring tasks and willing volunteers each have a choice. Volunteers retain their role, so roles must also be selected when carrying volunteers. New private tokens are generated; emails carry only with both ask-again and email consent. New event checklists are not pre-completed.
-8. **Dates:** default America/Edmonton and CAD. Event instants are stored in UTC; task due dates remain `YYYY-MM-DD` calendar strings, including when read from PostgreSQL. Task due offsets and event-day switching use the event's timezone, not the browser's timezone. Editing an event preserves its tasks, signups, public/private links and existing due dates; the editor explains that rescheduling does not silently shift deadlines or redraft the plan.
+8. **Dates:** default America/Edmonton and CAD. Event instants are stored in UTC; task due dates remain `YYYY-MM-DD` calendar strings, including when read from PostgreSQL. Task due offsets and event-day switching use the event's timezone, not the browser's timezone. Editing an event preserves its tasks, signups, and public/private links. On a date change, the organizer can choose to shift unfinished task deadlines by the event-local calendar-day change; completed task deadlines stay unchanged, and the plan is not redrafted.
 9. **Attendance is typed and aggregate-only:** no attendee records are collected. A zero registered count has no computable show rate.
 10. **Safe reminder sharing:** a general draft can be shared with a group; individualized drafts must be sent separately so private tokens stay private.
-11. **Scope gate:** P0 is the initial build. P1 remains deferred until the complete P0 release checklist passes. The supplied flow-map HTML is documentation only, not an app screen.
+11. **Scope gate:** the assigned v2.1 Tier 1 is complete, but no later tier is started here. The full PRD 0.6 authenticated-browser checklist remains a release gate before starting the next tier. The supplied flow-map HTML is documentation only, not an app screen.
 12. **Fictional demo only:** relative dates keep the demo's Spring Mixer upcoming. Real event data must be entered manually after publishing; it is not in seeds.
 
 ## Publishing

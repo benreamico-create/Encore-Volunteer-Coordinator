@@ -5,7 +5,7 @@ import {
   useGetDashboard, useLoadDemo, getGetDashboardQueryKey, getListSeriesQueryKey,
   type Dashboard, type Event,
 } from "@workspace/api-client-react";
-import { Shell, PageHeader } from "@/components/shell";
+import { Shell, PageHeader, SeriesSwitcher } from "@/components/shell";
 import { CreateSeriesDialog } from "@/components/create-series-dialog";
 import { EchoMark, ErrorPanel, Icon, Skel, Star } from "@/components/brand";
 import { useEncore } from "@/lib/session";
@@ -43,6 +43,11 @@ function EventCard({ e, i, n }: { e: Event; i: number; n: number }) {
       <Link href={`/app/events/${e.id}/plan`} className="btn btn-primary self-start sm:self-center" data-testid={`button-open-event-${e.id}`}>
         Open <Icon name="arrow" size={15} />
       </Link>
+      {e.status === "done" && (
+        <Link href={`/app/events/${e.id}/next`} className="btn btn-secondary self-start sm:self-center" data-testid={`button-create-next-${e.id}`}>
+          <Icon name="loop" size={15} /> Create next event
+        </Link>
+      )}
     </article>
   );
 }
@@ -58,11 +63,11 @@ function CarriedForward({ d }: { d: Dashboard }) {
       {!latest || !latest.recap ? (
         <div>
           <p className="font-display text-[19px] leading-snug">Nothing to carry yet.</p>
-          <p className="text-muted-ink text-[14px] mt-2">After your first event, the recap's top lesson and the resources worth using again will wait for you here.</p>
+          <p className="text-muted-ink text-[14px] mt-2">After your first event, the wrap-up's top lesson and the resources worth using again will wait for you here.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="text-[13px] text-muted-ink">From the {latest.event.name} recap</div>
+          <div className="text-[13px] text-muted-ink">From the {latest.event.name} wrap-up</div>
           {lesson ? (
             <blockquote className="font-display text-[19px] leading-snug border-l-2 pl-3" style={{ borderColor: "var(--gold)" }} data-testid="text-top-lesson">{lesson}</blockquote>
           ) : (
@@ -157,10 +162,12 @@ function EmptySeries() {
 export default function DashboardPage() {
   const { series, seriesLoading, seriesError, refetchSeries, selectedSeries } = useEncore();
   const [, navigate] = useLocation();
+  const [newSeriesOpen, setNewSeriesOpen] = useState(false);
   const id = selectedSeries?.id ?? 0;
   const dash = useGetDashboard(id, { query: { enabled: !!id, queryKey: getGetDashboardQueryKey(id) } });
 
   let body;
+  let currentEvent: { id: number; name: string } | null = null;
   if (seriesLoading) body = <DashboardSkeleton />;
   else if (seriesError) body = <ErrorPanel message={errorMessage(seriesError)} onRetry={refetchSeries} />;
   else if (!series.length) body = <EmptySeries />;
@@ -173,13 +180,18 @@ export default function DashboardPage() {
       if (ad !== bd) return ad - bd;
       return ad ? +new Date(b.starts_at) - +new Date(a.starts_at) : +new Date(a.starts_at) - +new Date(b.starts_at);
     });
+    const nextEvent = events.find((event) => event.status !== "done") ?? events[0];
+    currentEvent = nextEvent ? { id: nextEvent.id, name: nextEvent.name } : null;
     body = (
       <>
         <PageHeader
           eyebrow="Series"
           title={d.series.name}
           subtitle={d.series.description || "Your series. Every event builds on the last."}
-          actions={<button className="btn btn-primary" onClick={() => navigate(`/app/series/${d.series.id}/events/new`)} data-testid="button-new-event"><Icon name="plus" size={16} /> New event</button>}
+          actions={<>
+            <SeriesSwitcher onNew={() => setNewSeriesOpen(true)} />
+            <button className="btn btn-primary" onClick={() => navigate(`/app/series/${d.series.id}/events/new`)} data-testid="button-new-event"><Icon name="plus" size={16} /> New event</button>
+          </>}
         />
         <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
           <div className="space-y-3">
@@ -204,5 +216,5 @@ export default function DashboardPage() {
       </>
     );
   }
-  return <Shell>{body}</Shell>;
+  return <Shell event={currentEvent}>{body}<CreateSeriesDialog open={newSeriesOpen} onOpenChange={setNewSeriesOpen} /></Shell>;
 }

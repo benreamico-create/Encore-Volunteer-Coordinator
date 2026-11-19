@@ -10,11 +10,12 @@ export async function ownedEvent(uid:number,eid:number,client:Sql=sql) {
 }
 export async function eventSummary(eid:number,client:Sql=sql) {
   return required(await one(`SELECT e.*,
+    u.name AS updated_by_name,
     (SELECT count(*)::int FROM tasks t WHERE t.event_id=e.id AND t.status='done') AS tasks_done,
     (SELECT count(*)::int FROM tasks t WHERE t.event_id=e.id) AS tasks_total,
     (SELECT count(*)::int FROM volunteers v WHERE v.event_id=e.id AND v.status='confirmed') AS volunteers_count,
     (SELECT count(*)::int FROM roles r WHERE r.event_id=e.id) AS roles_count
-    FROM events e WHERE e.id=$1`,[eid],client));
+    FROM events e LEFT JOIN users u ON u.id=e.updated_by_user_id WHERE e.id=$1`,[eid],client));
 }
 export async function roleList(eid:number,client:Sql=sql) {
   return rows("SELECT r.*,(SELECT count(*)::int FROM volunteers v WHERE v.role_id=r.id AND v.status='confirmed') AS filled FROM roles r WHERE r.event_id=$1 ORDER BY sort_order,id",[eid],client);
@@ -46,6 +47,14 @@ export function validDate(value:string) {
 export function validTimezone(zone:string) {
   try { new Intl.DateTimeFormat("en",{timeZone:zone}).format(); return zone; }
   catch { throw new HttpError(400,"Choose a valid timezone."); }
+}
+export function calendarDayDelta(from:string|Date,to:string|Date,timezone:string) {
+  const day=(value:string|Date) => {
+    const parts=new Intl.DateTimeFormat("en-CA",{timeZone:timezone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(value));
+    const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));
+    return Date.UTC(Number(p.year),Number(p.month)-1,Number(p.day));
+  };
+  return Math.round((day(to)-day(from))/86400000);
 }
 export async function insertEvent(sid:number,data:Row,previousId:number|null=null,client:Sql=sql) {
   const slug=data.name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,48)||"event";

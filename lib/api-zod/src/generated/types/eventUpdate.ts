@@ -45,4 +45,5 @@ export interface EventUpdate {
   status?: EventUpdateStatus;
   /** @maxLength 500 */
   place_text?: string;
+  move_task_due_dates?: boolean;
 }

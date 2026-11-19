@@ -150,6 +150,22 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Ok" }
+  /events/{id}/plan-suggestions:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      operationId: addPlanSuggestions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlanDraft" }
+      responses:
+        "200":
+          description: Added selected tasks and roles without replacing saved work
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
   /events/{id}/tasks:
     parameters:
       - { $ref: "#/components/parameters/Id" }
@@ -477,11 +493,12 @@ components:
         day_of_contact_text: { type: string, maxLength: 500 }
         status: { type: string, enum: [planning, upcoming, done] }
         place_text: { type: string, maxLength: 500 }
+        move_task_due_dates: { type: boolean }
     Event:
       allOf:
         - { $ref: "#/components/schemas/EventInput" }
         - type: object
-          required: [id, series_id, signup_slug, status, signups_open, auto_task_from_signup, event_day_mode, timezone, tasks_done, tasks_total, volunteers_count, roles_count, plan_accepted]
+          required: [id, series_id, signup_slug, status, signups_open, auto_task_from_signup, event_day_mode, timezone, tasks_done, tasks_total, volunteers_count, roles_count, plan_accepted, updated_at, updated_by_name]
           properties:
             id: { type: integer }
             series_id: { type: integer }
@@ -501,6 +518,8 @@ components:
             plan_accepted: { type: boolean }
             carried_lesson: { type: string }
             carried_didnt: { type: string }
+            updated_at: { type: string, format: date-time }
+            updated_by_name: { type: ["string", "null"] }
     RoleInput:
       type: object
       required: [name, instruction, slots_needed]

@@ -133,6 +133,7 @@ export interface EventUpdate {
   status?: EventUpdateStatus;
   /** @maxLength 500 */
   place_text?: string;
+  move_task_due_dates?: boolean;
 }
 
 export type EventStatus = typeof EventStatus[keyof typeof EventStatus];
@@ -164,6 +165,9 @@ export type Event = EventInput & ({
   plan_accepted: boolean;
   carried_lesson?: string;
   carried_didnt?: string;
+  updated_at: string;
+  /** @nullable */
+  updated_by_name: string | null;
 });
 
 export interface RoleInput {

@@ -61,6 +61,8 @@ try {
     assert.equal(editedEvent.guests_expected,75);
     assert.equal(editedEvent.budget_amount,125.50);
     assert.equal(editedEvent.signup_slug,event.signup_slug);
+    assert(editedEvent.updated_at);
+    assert.equal(editedEvent.updated_by_name,"Fictional Tester");
     await a.call(`/events/${event.id}`,"PATCH",{name:"   "},400);
     await a.call(`/events/${event.id}`,"PATCH",{starts_at:"not a date"},400);
     await a.call(`/events/${event.id}`,"PATCH",{timezone:"Not/AZone"},400);
@@ -79,8 +81,23 @@ try {
     await a.call(`/events/${event.id}/accept-plan`,"POST",plan);
     assert.equal((await a.call(`/events/${event.id}`)).tasks.length,16);
     const dash=await a.call(`/series/${series.id}/dashboard`); assert.equal(dash.events[0].tasks_total,16);
+    await a.call(`/events/${event.id}/plan-suggestions`,"POST",{groups:[{name:"Fictional additions",tasks:[{title:"Suggested task kept separate",due_offset_days:2}]}],roles:[],notice:"Template"});
+    const suggested=await a.call(`/events/${event.id}`);
+    assert(suggested.tasks.some(t=>t.title==="Suggested task kept separate"));
+    assert.equal(suggested.tasks.length,17);
+    const finished=accepted.tasks.find(t=>t.due_date),openTask=accepted.tasks.find(t=>t.id!==finished.id&&t.status!=="done"&&t.due_date);
+    await a.call(`/events/${event.id}/tasks/${finished.id}`,"PATCH",{status:"done"});
+    const finishedDate=finished.due_date,openDate=openTask.due_date;
+    const shiftedEvent=await a.call(`/events/${event.id}`,"PATCH",{starts_at:"2027-03-22T00:30:00Z",move_task_due_dates:true});
+    const afterShift=await a.call(`/events/${event.id}`);
+    assert.equal(afterShift.tasks.find(t=>t.id===finished.id).due_date,finishedDate);
+    assert.equal(afterShift.tasks.find(t=>t.id===openTask.id).due_date,new Date(Date.parse(`${openDate}T12:00:00Z`)+86400000).toISOString().slice(0,10));
+    assert.equal(shiftedEvent.updated_by_name,"Fictional Tester");
+    const beforeNoShift=afterShift.tasks.find(t=>t.id===openTask.id).due_date;
+    await a.call(`/events/${event.id}`,"PATCH",{starts_at:"2027-03-23T00:30:00Z"});
+    assert.equal((await a.call(`/events/${event.id}`)).tasks.find(t=>t.id===openTask.id).due_date,beforeNoShift);
     assert.equal((await a.call("/auth/me")).ai_remaining,150);
-    console.log("PASS Phase 1: series isolation, event wizard validation and purpose, editable fallback plan, explicit/idempotent acceptance, dashboard counts, no paid AI calls");
+    console.log("PASS Phase 1: series isolation, event editing/audit metadata, accepted-plan suggestions, opt-in unfinished-task due-date shifts, editable fallback plan, idempotent acceptance, no paid AI calls");
     if (phase >= 2) {
       const publicClient=new Client();
       const role=await a.call(`/events/${event.id}/roles`,"POST",{name:"Fictional single slot",instruction:"Help with this test",slots_needed:1});
@@ -99,6 +116,16 @@ try {
       assert.equal(privatePage.tasks.length,1); assert(!("email" in privatePage));
       const live=await a.call(`/events/${event.id}`);
       const volunteer=live.volunteers[0]; assert.equal(volunteer.email,null);
+      const safeguardedRole=await a.call(`/events/${event.id}/roles`,"POST",{name:"Fictional capacity safeguard",instruction:"Capacity test",slots_needed:3});
+      const capacityOne=await publicClient.call(`/public/join/${event.signup_slug}`,"POST",{name:"Fictional Morgan",role_id:safeguardedRole.id,email_consent:false,ask_again:false});
+      const capacityTwo=await publicClient.call(`/public/join/${event.signup_slug}`,"POST",{name:"Fictional Casey",role_id:safeguardedRole.id,email_consent:false,ask_again:false});
+      await a.call(`/events/${event.id}/roles/${safeguardedRole.id}`,"PATCH",{name:safeguardedRole.name,instruction:safeguardedRole.instruction,slots_needed:1},400);
+      await a.call(`/events/${event.id}/roles/${safeguardedRole.id}`,"DELETE",undefined,409);
+      const capacityOneId=(await pool.query("SELECT id FROM volunteers WHERE token=$1",[capacityOne.token])).rows[0].id;
+      const capacityTwoId=(await pool.query("SELECT id FROM volunteers WHERE token=$1",[capacityTwo.token])).rows[0].id;
+      await a.call(`/events/${event.id}/volunteers/${capacityOneId}`,"DELETE");
+      await a.call(`/events/${event.id}/volunteers/${capacityTwoId}`,"DELETE");
+      await a.call(`/events/${event.id}/roles/${safeguardedRole.id}`,"DELETE");
       assert.equal(live.tasks.filter(t=>t.source==="signup").length,1);
       const ownTask=privatePage.tasks[0];
       await publicClient.call(`/public/v/${joined.token}/tasks/${ownTask.id}`,"PATCH",{done:true});
@@ -136,7 +163,7 @@ try {
       await publicClient.call(`/public/v/${joined.token}`,"GET",undefined,404);
       await a.call(`/events/${event.id}/tasks/${t.id}`,"DELETE");
       await a.call(`/events/${event.id}/roles/${role.id}`,"DELETE");
-      console.log("PASS Phase 2: task/role CRUD, move/reorder/assignment, atomic capacity, public and private scopes, consent, event-day ticks, closed signups, volunteer removal, helper drafts");
+      console.log("PASS Phase 2: task/role CRUD, drag endpoints and assignment, slot reduction/deletion safeguards, atomic signup capacity, public/private scopes, event-day ticks and helper drafts");
       if (phase >= 3) {
         const role2=await a.call(`/events/${event.id}/roles`,"POST",{name:"Fictional returning role",instruction:"Welcome people",slots_needed:5});
         const willing=await publicClient.call(`/public/join/${event.signup_slug}`,"POST",{name:"Fictional Priya",role_id:role2.id,email:"consented@example.invalid",email_consent:true,ask_again:true});

@@ -30,7 +30,7 @@ export function Star({ size = 14, className = "", style }: { size?: number; clas
   );
 }
 
-type IconName = "home" | "tasks" | "people" | "spark" | "plan" | "loop" | "plus" | "check" | "copy" | "link" | "calendar" | "arrow" | "clock" | "chevron" | "x" | "trash" | "logout" | "menu" | "pin";
+type IconName = "home" | "tasks" | "people" | "spark" | "plan" | "loop" | "plus" | "check" | "copy" | "link" | "calendar" | "arrow" | "clock" | "chevron" | "x" | "trash" | "logout" | "menu" | "pin" | "map" | "chat" | "megaphone" | "tag";
 const PATHS: Record<IconName, string> = {
   home: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
   tasks: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2",
@@ -51,6 +51,10 @@ const PATHS: Record<IconName, string> = {
   logout: "M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10",
   menu: "M4 7h16M4 12h16M4 17h16",
   pin: "M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z",
+  map: "M3 6.5 8 4l8 2 5-2.5v14L16 20l-8-2-5 2.5zM8 4v14M16 6v14",
+  chat: "M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-5 4v-4.5a2.5 2.5 0 0 1-1-2z",
+  megaphone: "M3 11v2a2 2 0 0 0 2 2h2l3 5h3l-2.5-5H12l8 3V6l-8 3H5a2 2 0 0 0-2 2zM20 9v6",
+  tag: "M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V4h9l8.6 8.6a.6.6 0 0 1 0 .8zM7.5 7.5h.01",
 };
 export function Icon({ name, size = 18, ...rest }: { name: IconName; size?: number } & SVGProps<SVGSVGElement>) {
   return (

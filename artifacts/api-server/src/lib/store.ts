@@ -37,7 +37,7 @@ export function id(value: unknown): number {
 // Only route-owned constant table/field allowlists may reach this helper.
 export async function patch(table: "events" | "tasks" | "roles", rowId: number, data: Row, eventId?: number, client: Sql = sql) {
   const allow: Record<typeof table, string[]> = {
-    events: ["name","starts_at","timezone","city","guests_expected","budget_amount","description_raw","purpose_why","purpose_audience","purpose_takeaway","signups_open","auto_task_from_signup","event_day_mode","event_day_notes","day_of_contact_text","status","place_text"],
+    events: ["name","starts_at","timezone","city","guests_expected","budget_amount","description_raw","purpose_why","purpose_audience","purpose_takeaway","signups_open","auto_task_from_signup","event_day_mode","event_day_notes","day_of_contact_text","status","place_text","updated_at","updated_by_user_id"],
     tasks: ["title","group_name","status","assignee_user_id","assignee_volunteer_id","role_id","due_date","recurring","sort_order"],
     roles: ["name","instruction","slots_needed"],
   };

@@ -1,21 +1,22 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Icon, Orbs, Wordmark, Avatar } from "@/components/brand";
-import { CreateSeriesDialog } from "@/components/create-series-dialog";
+import { Icon, Orbs, EchoMark, Avatar } from "@/components/brand";
 import { useEncore } from "@/lib/session";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 type ShellEvent = { id: number; name: string } | null;
 
-function SeriesSwitcher({ onNew }: { onNew: () => void }) {
+export function SeriesSwitcher({ onNew }: { onNew: () => void }) {
   const { series, selectedSeries, selectSeries, seriesLoading } = useEncore();
   const [, navigate] = useLocation();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="w-full flex items-center justify-between gap-2 rounded-xl px-3 h-11 text-left transition-colors hover:bg-white/10"
+        className="max-w-full w-fit flex items-center justify-between gap-2 rounded-xl px-3 h-11 text-left transition-colors hover:bg-white/10"
         style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", color: "#F0EEE6" }}
         data-testid="button-series-switcher"
       >
@@ -39,112 +40,144 @@ function SeriesSwitcher({ onNew }: { onNew: () => void }) {
   );
 }
 
-function NavList({ event, onNavigate }: { event: ShellEvent; onNavigate?: () => void }) {
+function NavList({ event, onNavigate, mobile = false }: { event: ShellEvent; onNavigate?: () => void; mobile?: boolean }) {
   const [loc] = useLocation();
-  const items: { label: string; icon: "home" | "tasks" | "people" | "plan" | "loop"; href: string | null }[] = [
-    { label: "Dashboard", icon: "home", href: "/app" },
+  const { toast } = useToast();
+  const items: { label: string; icon: "tasks" | "people" | "plan" | "loop" | "map" | "chat" | "tag"; href: string | null; soon?: boolean }[] = [
+    { label: "Plan", icon: "plan", href: event ? `/app/events/${event.id}/plan` : null },
     { label: "Tasks", icon: "tasks", href: event ? `/app/events/${event.id}/tasks` : null },
     { label: "Volunteers", icon: "people", href: event ? `/app/events/${event.id}/volunteers` : null },
-    { label: "Plan", icon: "plan", href: event ? `/app/events/${event.id}/plan` : null },
-    { label: "Recap", icon: "loop", href: event ? `/app/events/${event.id}/recap` : null },
+    { label: "Blueprint", icon: "map", href: null, soon: true },
+    { label: "Chat", icon: "chat", href: null, soon: true },
+    { label: "Sponsors", icon: "tag", href: null, soon: true },
+    { label: "Wrap-up", icon: "loop", href: event ? `/app/events/${event.id}/wrapup` : null },
   ];
+  const visibleItems = mobile ? items.filter((item) => ["Plan", "Tasks", "Volunteers", "Blueprint", "Chat"].includes(item.label)) : items;
   return (
-    <nav className="flex flex-col gap-1" aria-label="Main">
-      {items.map((it) =>
+    <nav className={mobile ? "flex items-center justify-around gap-1" : "flex flex-col items-center gap-2"} aria-label="Main">
+      {visibleItems.map((it) =>
         it.href ? (
-          <Link key={it.label} href={it.href} onClick={onNavigate} className="rail-item" data-active={loc === it.href} data-testid={`nav-${it.label.toLowerCase()}`}>
-            <Icon name={it.icon} /> {it.label}
-          </Link>
+          <Tooltip key={it.label}>
+            <TooltipTrigger asChild>
+              <Link key={it.label} href={it.href} onClick={onNavigate} className={mobile ? "bottom-nav-item" : "rail-icon"} aria-label={it.label} aria-current={loc === it.href || loc.startsWith(`${it.href}/`) ? "page" : undefined} data-active={loc === it.href || loc.startsWith(`${it.href}/`)} data-testid={`nav-${it.label.toLowerCase()}`}>
+                <Icon name={it.icon} size={22} />{mobile && <span>{it.label}</span>}
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side={mobile ? "top" : "right"}>{it.label}</TooltipContent>
+          </Tooltip>
         ) : (
-          <span key={it.label} className="rail-item" aria-disabled="true" title="Open an event first" data-testid={`nav-${it.label.toLowerCase()}-disabled`}>
-            <Icon name={it.icon} /> {it.label}
-          </span>
+          <Tooltip key={it.label}>
+            <TooltipTrigger asChild>
+              <button type="button" className={mobile ? "bottom-nav-item is-disabled" : "rail-icon is-disabled"} aria-label={it.soon ? `${it.label}, coming soon` : `${it.label}, open an event first`} aria-disabled="true" title={it.soon ? `${it.label} is coming soon` : "Open an event first"} onClick={() => toast({ title: it.soon ? `${it.label} is coming soon` : "Open an event first" })} data-testid={`nav-${it.label.toLowerCase()}-disabled`}>
+                <Icon name={it.icon} size={22} />{mobile && <span>{it.label}</span>}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={mobile ? "top" : "right"}>{it.soon ? `${it.label} · coming soon` : `${it.label} · open an event first`}</TooltipContent>
+          </Tooltip>
         ),
       )}
     </nav>
   );
 }
 
-function UserBlock() {
+function UserMenu() {
   const { session, logout, loggingOut } = useEncore();
   const user = session?.user;
   if (!user) return null;
   return (
-    <div className="flex items-center gap-2.5 px-1">
-      <Avatar name={user.name || user.email} />
-      <div className="min-w-0 flex-1">
-        <div className="text-[13px] font-semibold truncate" style={{ color: "#F0EEE6" }} data-testid="text-user-name">{user.name || "Organizer"}</div>
-        <div className="text-[12px] truncate" style={{ color: "#B0AEA5" }}>{user.email}</div>
-      </div>
-      <button onClick={logout} disabled={loggingOut} className="w-11 h-11 inline-flex items-center justify-center rounded-full hover:bg-white/10" style={{ color: "#D1CFC5" }} aria-label="Log out" title="Log out" data-testid="button-logout">
-        <Icon name="logout" size={17} />
-      </button>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="rail-avatar" aria-label={`Account: ${user.name || user.email}`} title={user.name || user.email} data-testid="button-account-menu">
+          <Avatar name={user.name || user.email} size={32} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" side="right" className="w-[240px] rounded-xl" style={{ background: "#FEFCF0" }}>
+        <DropdownMenuLabel>
+          <span className="block font-semibold">{user.name || "Organizer"}</span>
+          <span className="block text-[12px] text-muted-ink font-normal">{user.email}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => logout()} disabled={loggingOut} className="cursor-pointer gap-2" data-testid="button-logout">
+          <Icon name="logout" size={16} /> {loggingOut ? "Signing out…" : "Sign out"}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
 function HelperButton({ event }: { event: ShellEvent }) {
-  const { session } = useEncore();
-  const inner = (
-    <>
-      <Icon name="spark" size={16} /> Ask the helper
-    </>
-  );
   return (
-    <div>
-      {event ? (
-        <Link href={`/app/events/${event.id}/tasks`} className="helper-btn" data-testid="button-ask-helper">{inner}</Link>
-      ) : (
-        <button className="helper-btn" disabled title="Open an event to ask the helper" data-testid="button-ask-helper">{inner}</button>
-      )}
-      {session && <div className="rail-label text-center mt-2" style={{ fontSize: 10 }} data-testid="text-ai-remaining">{session.ai_remaining} helper uses left</div>}
-    </div>
+    event ? (
+      <Link href={`/app/events/${event.id}/tasks`} className="rail-helper" aria-label="Ask the helper" data-testid="button-ask-helper"><Icon name="spark" size={20} /></Link>
+    ) : (
+      <button className="rail-helper is-disabled" disabled title="Open an event to ask the helper" aria-label="Ask the helper" data-testid="button-ask-helper"><Icon name="spark" size={20} /></button>
+    )
   );
 }
 
 export function Shell({ event = null, children }: { event?: ShellEvent; children: ReactNode }) {
-  const [newOpen, setNewOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const { selectedSeries } = useEncore();
+  const [, navigate] = useLocation();
+  const newEventPath = selectedSeries ? `/app/series/${selectedSeries.id}/events/new` : null;
+  const shortName = event?.name.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase() || "EV";
 
   return (
     <div className="min-h-[100dvh]">
       <Orbs />
-      {/* Floating sidebar, 900px+ */}
-      <aside className="rail hidden min-[900px]:flex fixed left-3 top-3 bottom-3 w-[232px] rounded-[22px] flex-col p-4 z-30 border border-white/10">
-        <Link href="/app" className="px-1.5 pt-1 pb-5 rounded-lg" data-testid="link-home"><Wordmark tone="dark" size={26} /></Link>
-        <SeriesSwitcher onNew={() => setNewOpen(true)} />
-        <div className="rail-label mt-6 mb-2 px-1.5 truncate" data-testid="text-current-event">{event ? event.name : "No event open"}</div>
+      {/* Slim floating navigation rail, 900px+ */}
+      <aside className="rail hidden min-[900px]:flex fixed left-3 top-3 bottom-3 w-[72px] rounded-[22px] flex-col items-center py-3 z-30 border border-white/10 overflow-x-hidden overflow-y-auto" aria-label="Encore navigation">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link href="/app" className="rail-home" aria-label="Dashboard" data-testid="link-home"><EchoMark tone="dark" size={34} /></Link>
+          </TooltipTrigger>
+          <TooltipContent side="right">Dashboard</TooltipContent>
+        </Tooltip>
+        <div className="rail-divider" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {event ? <Link href={`/app/events/${event.id}/plan`} className="event-tile" aria-label={`Current event: ${event.name}`} title={event.name} data-testid="link-current-event">{shortName}</Link> : <button type="button" className="event-tile is-disabled" aria-label="No event open" disabled>No</button>}
+          </TooltipTrigger>
+          <TooltipContent side="right">{event?.name ?? "No event open"}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {newEventPath ? <Link href={newEventPath} className="rail-add" aria-label="Create new event" data-testid="button-rail-new-event"><Icon name="plus" size={19} /></Link> : <button type="button" className="rail-add is-disabled" aria-label="Create new event" disabled><Icon name="plus" size={19} /></button>}
+          </TooltipTrigger>
+          <TooltipContent side="right">Create new event</TooltipContent>
+        </Tooltip>
+        <div className="rail-divider" />
         <NavList event={event} />
-        <div className="mt-auto flex flex-col gap-4">
-          <HelperButton event={event} />
-          <div className="h-px" style={{ background: "rgba(255,255,255,0.1)" }} />
-          <UserBlock />
+        <div className="mt-auto flex flex-col items-center gap-3 pt-3">
+          <Tooltip>
+            <TooltipTrigger asChild><HelperButton event={event} /></TooltipTrigger>
+            <TooltipContent side="right">Ask the helper</TooltipContent>
+          </Tooltip>
+          <div className="rail-divider" />
+          <UserMenu />
         </div>
       </aside>
 
-      {/* Top bar, below 900px */}
-      <header className="min-[900px]:hidden sticky top-0 z-30 p-2.5">
-        <div className="rail rounded-[18px] px-3 h-14 flex items-center justify-between">
-          <Link href="/app" data-testid="link-home-mobile"><Wordmark tone="dark" size={22} /></Link>
-          <button className="w-11 h-11 inline-flex items-center justify-center rounded-full" style={{ color: "#F0EEE6" }} onClick={() => setMenuOpen((v) => !v)} aria-expanded={menuOpen} aria-label="Menu" data-testid="button-mobile-menu">
-            <Icon name={menuOpen ? "x" : "menu"} />
-          </button>
-        </div>
-        {menuOpen && (
-          <div className="rail rounded-[18px] mt-2 p-3 flex flex-col gap-3 rise">
-            <SeriesSwitcher onNew={() => { setMenuOpen(false); setNewOpen(true); }} />
-            <div className="rail-label px-1.5 truncate">{event ? event.name : "No event open"}</div>
-            <NavList event={event} onNavigate={() => setMenuOpen(false)} />
-            <HelperButton event={event} />
-            <UserBlock />
-          </div>
-        )}
-      </header>
+      {/* Compact bottom navigation on phones and tablets */}
+      <nav className="mobile-bottom-nav min-[900px]:hidden" aria-label="Mobile navigation">
+        <NavList event={event} mobile />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="bottom-nav-item" aria-label="More navigation" data-testid="button-mobile-more"><Icon name="chevron" size={21} /><span>More</span></button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" className="w-56 rounded-xl" style={{ background: "#FEFCF0" }}>
+            <DropdownMenuItem onSelect={() => navigate("/app")} className="cursor-pointer gap-2"><Icon name="home" size={16} /> Dashboard</DropdownMenuItem>
+            <DropdownMenuItem disabled className="gap-2"><Icon name="tag" size={16} /> Sponsors · coming soon</DropdownMenuItem>
+            {event && <DropdownMenuItem onSelect={() => navigate(`/app/events/${event.id}/wrapup`)} className="cursor-pointer gap-2"><Icon name="loop" size={16} /> Wrap-up</DropdownMenuItem>}
+            {newEventPath && <DropdownMenuItem onSelect={() => navigate(newEventPath)} className="cursor-pointer gap-2"><Icon name="plus" size={16} /> New event</DropdownMenuItem>}
+            <DropdownMenuSeparator />
+            <div className="flex items-center justify-between px-2 py-1.5"><span className="text-[12px] text-muted-ink">Account</span><UserMenu /></div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </nav>
 
-      <main className="relative px-4 pb-16 pt-4 min-[900px]:pl-[268px] min-[900px]:pr-7 min-[900px]:pt-7">
+      <main className="relative px-4 pb-24 pt-5 min-[900px]:pl-[104px] min-[900px]:pr-7 min-[900px]:pt-7 min-[900px]:pb-12">
         <div className="max-w-[1180px]">{children}</div>
       </main>
-      <CreateSeriesDialog open={newOpen} onOpenChange={setNewOpen} />
     </div>
   );
 }

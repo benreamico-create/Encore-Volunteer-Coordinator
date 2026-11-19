@@ -2,7 +2,7 @@ import { Router } from "express";
 import { CreateSeriesBody, ListSeriesResponse, CreateEventBody, GetDashboardResponse, GetEventResponse, UpdateEventBody, AcceptPlanBody, DraftPlanBody } from "@workspace/api-zod";
 import { id, one, rows, transaction, patch, HttpError } from "../lib/store";
 import { userId } from "../lib/security";
-import { bundle, dueFromOffset, eventSummary, insertEvent, ownedEvent, ownedSeries, previousData, recapData, validDate, validTimezone, wire } from "../lib/events";
+import { bundle, calendarDayDelta, dueFromOffset, eventSummary, insertEvent, ownedEvent, ownedSeries, previousData, recapData, validDate, validTimezone, wire } from "../lib/events";
 import { draft, planTemplate } from "../lib/ai";
 import { z } from "zod";
 
@@ -36,7 +36,7 @@ router.get("/events/:id",async(req,res)=>{
   res.json(GetEventResponse.parse(wire(await bundle(userId(req),id(req.params.id)))));
 });
 router.patch("/events/:id",async(req,res)=>{
-  const eid=id(req.params.id); await ownedEvent(userId(req),eid);
+  const uid=userId(req),eid=id(req.params.id);
   const data=UpdateEventBody.parse(req.body);
   if (data.name !== undefined) {
     data.name = data.name.trim();
@@ -48,8 +48,21 @@ router.patch("/events/:id",async(req,res)=>{
   }
   if (data.starts_at !== undefined) data.starts_at = validDate(data.starts_at);
   if (data.timezone !== undefined) data.timezone = validTimezone(data.timezone);
-  await patch("events",eid,data);
-  res.json(wire(await eventSummary(eid)));
+  const moveDueDates=data.move_task_due_dates===true;
+  delete data.move_task_due_dates;
+  const updated=await transaction(async client=>{
+    const previous=await ownedEvent(uid,eid,client);
+    if(moveDueDates && data.starts_at!==undefined) {
+      const days=calendarDayDelta(previous.starts_at,data.starts_at,previous.timezone);
+      if(days!==0) await client.query(
+        "UPDATE tasks SET due_date=due_date+$2::int WHERE event_id=$1 AND status<>'done' AND due_date IS NOT NULL",
+        [eid,days],
+      );
+    }
+    await patch("events",eid,{...data,updated_at:new Date(),updated_by_user_id:uid},undefined,client);
+    return eventSummary(eid,client);
+  });
+  res.json(wire(updated));
 });
 router.post("/events/:id/accept-plan",async(req,res)=>{
   const uid=userId(req),eid=id(req.params.id),data=AcceptPlanBody.parse(req.body);
@@ -64,6 +77,31 @@ router.post("/events/:id/accept-plan",async(req,res)=>{
     }
     for (const [index,r] of data.roles.entries()) await client.query("INSERT INTO roles(event_id,name,instruction,slots_needed,sort_order) VALUES($1,$2,$3,$4,$5)",[eid,r.name,r.instruction,r.slots,index]);
     await client.query("UPDATE events SET plan_accepted=true,status='upcoming' WHERE id=$1",[eid]);
+  });
+  res.json({ok:true});
+});
+router.post("/events/:id/plan-suggestions",async(req,res)=>{
+  const uid=userId(req),eid=id(req.params.id),data=AcceptPlanBody.parse(req.body);
+  const suggestedTasks=data.groups.flatMap(group=>group.tasks.map(task=>({group:group.name,task})));
+  if(!suggestedTasks.length&&!data.roles.length) throw new HttpError(400,"Select at least one task or role to add.");
+  await transaction(async client=>{
+    await client.query("SELECT id FROM events WHERE id=$1 FOR UPDATE",[eid]);
+    const event=await ownedEvent(uid,eid,client);
+    if(!event.plan_accepted) throw new HttpError(409,"Accept the plan before adding suggestions.");
+    const taskOrder=await one("SELECT coalesce(max(sort_order),0)+1 AS n FROM tasks WHERE event_id=$1",[eid],client);
+    let order=Number(taskOrder?.n??1);
+    for(const {group,task} of suggestedTasks) {
+      await client.query(
+        "INSERT INTO tasks(event_id,group_name,title,due_date,source,source_note,sort_order) VALUES($1,$2,$3,$4,'ai_plan',$5,$6)",
+        [eid,group,task.title,dueFromOffset(event,task.due_offset_days),task.from_lesson||"",order++],
+      );
+    }
+    const roleOrder=await one("SELECT coalesce(max(sort_order),0)+1 AS n FROM roles WHERE event_id=$1",[eid],client);
+    order=Number(roleOrder?.n??1);
+    for(const role of data.roles) await client.query(
+      "INSERT INTO roles(event_id,name,instruction,slots_needed,sort_order) VALUES($1,$2,$3,$4,$5)",
+      [eid,role.name,role.instruction,role.slots,order++],
+    );
   });
   res.json({ok:true});
 });

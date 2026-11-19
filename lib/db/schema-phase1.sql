@@ -18,8 +18,13 @@ CREATE TABLE IF NOT EXISTS events (
   auto_task_from_signup boolean NOT NULL DEFAULT true, event_day_mode boolean NOT NULL DEFAULT false,
   event_day_notes text NOT NULL DEFAULT '', day_of_contact_text text NOT NULL DEFAULT '',
   plan_accepted boolean NOT NULL DEFAULT false, carried_lesson text NOT NULL DEFAULT '', carried_didnt text NOT NULL DEFAULT '',
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by_user_id integer REFERENCES users(id) ON DELETE SET NULL
 );
+-- Additive update for existing v2.0 databases; preserve all event records.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_by_user_id integer REFERENCES users(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS events_series_idx ON events(series_id);
 CREATE TABLE IF NOT EXISTS roles (
   id serial PRIMARY KEY, event_id integer NOT NULL REFERENCES events(id) ON DELETE CASCADE,

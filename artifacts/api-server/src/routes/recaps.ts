@@ -17,14 +17,14 @@ router.put("/events/:id/recap",async(req,res)=>{
 router.post("/ai/starter",async(req,res)=>{
   const uid=userId(req),data=DraftStarterBody.parse(req.body); await ownedEvent(uid,data.event_id);
   const recap=data.recap??await recapData(data.event_id);
-  if(!recap) throw new HttpError(400,"Write a recap before drafting the next event starter.");
+  if(!recap) throw new HttpError(400,"Write a wrap-up before drafting the next event starter.");
   const schema=z.object({items:z.array(z.string().min(1).max(1000)).min(3).max(7)});
   res.json(await draft(uid,"a next event starter",recap,'{items:[string]}; 3–7 imperative actions grounded only in this recap',schema,starterTemplate(recap)));
 });
 router.post("/events/:id/next",async(req,res)=>{
   const uid=userId(req),eid=id(req.params.id),data=CreateNextEventBody.parse(req.body);
   const next=await transaction(async client=>{
-    const prev=await ownedEvent(uid,eid,client),recap=required(await recapData(eid,client),"Save your recap before creating the next event.");
+    const prev=await ownedEvent(uid,eid,client),recap=required(await recapData(eid,client),"Save your wrap-up before creating the next event.");
     const willing=data.carry_volunteers ? await rows("SELECT * FROM volunteers WHERE event_id=$1 AND ask_again=true AND status='confirmed' ORDER BY id",[eid],client) : [];
     if(willing.length && !data.carry_roles) throw new HttpError(400,"Include roles when carrying volunteers so each person keeps their chosen role.");
     const event=await insertEvent(prev.series_id,{...prev,name:data.name,starts_at:data.starts_at},eid,client);

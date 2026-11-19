@@ -249,7 +249,9 @@ export const GetDashboardResponse = zod.object({
   "roles_count": zod.number().int(),
   "plan_accepted": zod.boolean(),
   "carried_lesson": zod.string().optional(),
-  "carried_didnt": zod.string().optional()
+  "carried_didnt": zod.string().optional(),
+  "updated_at": zod.coerce.date(),
+  "updated_by_name": zod.string().nullable()
 }))),
   "latest": zod.union([zod.object({
   "event": zod.object({
@@ -283,7 +285,9 @@ export const GetDashboardResponse = zod.object({
   "roles_count": zod.number().int(),
   "plan_accepted": zod.boolean(),
   "carried_lesson": zod.string().optional(),
-  "carried_didnt": zod.string().optional()
+  "carried_didnt": zod.string().optional(),
+  "updated_at": zod.coerce.date(),
+  "updated_by_name": zod.string().nullable()
 })),
   "recap": zod.union([zod.object({
   "registered": zod.number().int().min(getDashboardResponseLatestOneRecapOneOneRegisteredMin).max(getDashboardResponseLatestOneRecapOneOneRegisteredMax),
@@ -433,7 +437,9 @@ export const CreateEventResponse = zod.object({
   "roles_count": zod.number().int(),
   "plan_accepted": zod.boolean(),
   "carried_lesson": zod.string().optional(),
-  "carried_didnt": zod.string().optional()
+  "carried_didnt": zod.string().optional(),
+  "updated_at": zod.coerce.date(),
+  "updated_by_name": zod.string().nullable()
 }))
 
 
@@ -595,7 +601,9 @@ export const GetEventResponse = zod.object({
   "roles_count": zod.number().int(),
   "plan_accepted": zod.boolean(),
   "carried_lesson": zod.string().optional(),
-  "carried_didnt": zod.string().optional()
+  "carried_didnt": zod.string().optional(),
+  "updated_at": zod.coerce.date(),
+  "updated_by_name": zod.string().nullable()
 })),
   "series": zod.object({
   "name": zod.string().min(1).max(getEventResponseSeriesOneNameMax),
@@ -706,7 +714,9 @@ export const GetEventResponse = zod.object({
   "roles_count": zod.number().int(),
   "plan_accepted": zod.boolean(),
   "carried_lesson": zod.string().optional(),
-  "carried_didnt": zod.string().optional()
+  "carried_didnt": zod.string().optional(),
+  "updated_at": zod.coerce.date(),
+  "updated_by_name": zod.string().nullable()
 })),
   "recap": zod.union([zod.object({
   "registered": zod.number().int().min(getEventResponsePreviousOneRecapOneOneRegisteredMin).max(getEventResponsePreviousOneRecapOneOneRegisteredMax),
@@ -812,7 +822,8 @@ export const UpdateEventBody = zod.object({
   "event_day_notes": zod.string().max(updateEventBodyEventDayNotesMax).optional(),
   "day_of_contact_text": zod.string().max(updateEventBodyDayOfContactTextMax).optional(),
   "status": zod.enum(['planning', 'upcoming', 'done']).optional(),
-  "place_text": zod.string().max(updateEventBodyPlaceTextMax).optional()
+  "place_text": zod.string().max(updateEventBodyPlaceTextMax).optional(),
+  "move_task_due_dates": zod.boolean().optional()
 })
 
 export const updateEventResponseOneNameMax = 160;
@@ -867,7 +878,9 @@ export const UpdateEventResponse = zod.object({
   "roles_count": zod.number().int(),
   "plan_accepted": zod.boolean(),
   "carried_lesson": zod.string().optional(),
-  "carried_didnt": zod.string().optional()
+  "carried_didnt": zod.string().optional(),
+  "updated_at": zod.coerce.date(),
+  "updated_by_name": zod.string().nullable()
 }))
 
 
@@ -917,6 +930,56 @@ export const AcceptPlanBody = zod.object({
 })
 
 export const AcceptPlanResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+export const AddPlanSuggestionsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const addPlanSuggestionsBodyGroupsItemNameMax = 120;
+
+export const addPlanSuggestionsBodyGroupsItemTasksItemTitleMax = 300;
+
+export const addPlanSuggestionsBodyGroupsItemTasksItemDueOffsetDaysMin = -365;
+export const addPlanSuggestionsBodyGroupsItemTasksItemDueOffsetDaysMax = 365;
+
+export const addPlanSuggestionsBodyGroupsItemTasksItemFromLessonMax = 1000;
+
+export const addPlanSuggestionsBodyGroupsItemTasksMax = 30;
+
+export const addPlanSuggestionsBodyGroupsMax = 12;
+
+export const addPlanSuggestionsBodyRolesItemNameMax = 120;
+
+export const addPlanSuggestionsBodyRolesItemSlotsMax = 100;
+
+export const addPlanSuggestionsBodyRolesItemInstructionMax = 2000;
+
+export const addPlanSuggestionsBodyRolesMax = 20;
+
+
+
+export const AddPlanSuggestionsBody = zod.object({
+  "groups": zod.array(zod.object({
+  "name": zod.string().max(addPlanSuggestionsBodyGroupsItemNameMax),
+  "tasks": zod.array(zod.object({
+  "title": zod.string().min(1).max(addPlanSuggestionsBodyGroupsItemTasksItemTitleMax),
+  "due_offset_days": zod.number().int().min(addPlanSuggestionsBodyGroupsItemTasksItemDueOffsetDaysMin).max(addPlanSuggestionsBodyGroupsItemTasksItemDueOffsetDaysMax),
+  "from_lesson": zod.string().max(addPlanSuggestionsBodyGroupsItemTasksItemFromLessonMax).optional()
+})).max(addPlanSuggestionsBodyGroupsItemTasksMax)
+})).max(addPlanSuggestionsBodyGroupsMax),
+  "roles": zod.array(zod.object({
+  "name": zod.string().min(1).max(addPlanSuggestionsBodyRolesItemNameMax),
+  "slots": zod.number().int().min(1).max(addPlanSuggestionsBodyRolesItemSlotsMax),
+  "instruction": zod.string().max(addPlanSuggestionsBodyRolesItemInstructionMax)
+})).max(addPlanSuggestionsBodyRolesMax),
+  "notice": zod.string().optional(),
+  "ai_remaining": zod.number().int().optional()
+})
+
+export const AddPlanSuggestionsResponse = zod.object({
   "ok": zod.boolean()
 })
 
@@ -1259,7 +1322,9 @@ export const CreateNextEventResponse = zod.object({
   "roles_count": zod.number().int(),
   "plan_accepted": zod.boolean(),
   "carried_lesson": zod.string().optional(),
-  "carried_didnt": zod.string().optional()
+  "carried_didnt": zod.string().optional(),
+  "updated_at": zod.coerce.date(),
+  "updated_by_name": zod.string().nullable()
 }))
 
 

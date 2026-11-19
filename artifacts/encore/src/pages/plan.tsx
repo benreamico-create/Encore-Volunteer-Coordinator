@@ -12,6 +12,7 @@ import { ErrorPanel, Icon, Skel, Star } from "@/components/brand";
 import { GROUPS, addDays, clearDraft, errorMessage, errorStatus, fmtDate, fmtShort, fmtTime, offsetLabel, readDraft, sourceChip, stashDraft } from "@/lib/encore";
 import { useEncore } from "@/lib/session";
 import { useToast } from "@/hooks/use-toast";
+import { SavedPlanEditor } from "@/pages/saved-plan-editor";
 
 type Row = { key: string; title: string; offset: number; group: string; from_lesson?: string };
 type RoleRow = { key: string; name: string; slots: number; instruction: string };
@@ -30,14 +31,14 @@ function Overview({ b, onEdit }: { b: EventBundle; onEdit: () => void }) {
   return (
     <section className="glass relative rise" data-testid="panel-event-overview">
       <Star size={13} className="absolute top-4 right-4" />
-      <div className="mono-label mb-3">Event overview</div>
+      <div className="mono-label mb-3">Event details</div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[14px]">
         <div><dt className="text-muted-ink text-[12px]">Date</dt><dd className="font-semibold" data-testid="text-event-date">{fmtDate(e.starts_at, e.timezone)}</dd></div>
         <div><dt className="text-muted-ink text-[12px]">Starts</dt><dd className="font-semibold">{fmtTime(e.starts_at, e.timezone)}</dd></div>
         <div><dt className="text-muted-ink text-[12px]">City</dt><dd className="font-semibold">{e.city || "Not set"}</dd></div>
+        <div><dt className="text-muted-ink text-[12px]">Place</dt><dd className="font-semibold truncate">{e.place_text || "Not set"}</dd></div>
         <div><dt className="text-muted-ink text-[12px]">Guests</dt><dd className="font-semibold">{e.guests_expected ?? "Not set"}</dd></div>
         <div><dt className="text-muted-ink text-[12px]">Budget</dt><dd className="font-semibold">{e.budget_amount != null ? `$${e.budget_amount.toLocaleString("en-CA")} ${e.budget_currency || "CAD"}` : "Not set"}</dd></div>
-        <div><dt className="text-muted-ink text-[12px]">Place</dt><dd className="font-semibold truncate">{e.place_text || "Not set"}</dd></div>
       </dl>
       <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--line)" }}>
         <div className="text-[12px] text-muted-ink mb-1">Description</div>
@@ -50,8 +51,11 @@ function Overview({ b, onEdit }: { b: EventBundle; onEdit: () => void }) {
           ))}
         </div>
       )}
-      <button type="button" className="btn btn-secondary btn-sm mt-5 w-full" onClick={onEdit} data-testid="button-edit-event-overview">
-        Edit event information
+      <p className="text-[12px] text-muted-ink mt-4" data-testid="text-event-last-edited">
+        {e.updated_by_name ? `Last edited ${fmtDate(e.updated_at, e.timezone)} at ${fmtTime(e.updated_at, e.timezone)} by ${e.updated_by_name}` : "No edits since this event was created"}
+      </p>
+      <button type="button" className="btn btn-secondary btn-sm mt-4 w-full" onClick={onEdit} data-testid="button-edit-event-overview">
+        Edit details
       </button>
     </section>
   );
@@ -149,6 +153,7 @@ export default function PlanPage() {
 
   const ev = b.event;
   const prevName = b.previous?.event.name;
+  const showingDraft = !!rows && !ev.plan_accepted;
   const grouped = Array.from(new Set([...GROUPS, ...(rows ?? []).map((r) => r.group)])).map((g) => ({ g, items: (rows ?? []).filter((r) => r.group === g) }));
   const taskCount = rows?.length ?? 0;
   const lessonChip = (r: Row) => r.from_lesson ? <span className="chip chip-gold" title={r.from_lesson}>from your {prevName ?? "last event"} lesson</span> : null;
@@ -157,11 +162,11 @@ export default function PlanPage() {
     <Shell event={shellEvent}>
       <PageHeader
         eyebrow={b.series.name}
-        title={rows ? `${ev.name}: draft plan` : ev.name}
-        subtitle={rows ? "Step 2 of 2 · Edit, delete or add anything" : ev.plan_accepted ? "Plan accepted. Your tasks and roles are on the board." : "No plan drafted yet."}
+        title={showingDraft ? `${ev.name}: draft plan` : ev.name}
+        subtitle={showingDraft ? "Step 2 of 2 · Edit, delete or add anything" : ev.plan_accepted ? "Plan accepted. Edit the event, tasks and volunteer roles here." : "No plan drafted yet."}
         actions={<>
-          <button type="button" className="btn btn-secondary" onClick={() => setEditEvent(true)} data-testid="button-edit-event">Edit event information</button>
-          {rows ? (
+          {!ev.plan_accepted && <button type="button" className="btn btn-secondary" onClick={() => setEditEvent(true)} data-testid="button-edit-event">Edit details</button>}
+          {showingDraft ? (
           <>
             <button className="btn btn-secondary" onClick={() => setConfirmRedraft(true)} disabled={draftM.isPending || acceptM.isPending} data-testid="button-redraft">{draftM.isPending ? "Drafting" : "Redraft"}</button>
             <button className="btn btn-primary" onClick={accept} disabled={acceptM.isPending || draftM.isPending} data-testid="button-accept-plan"><Icon name="check" size={16} /> {acceptM.isPending ? "Accepting" : "Accept plan"}</button>
@@ -174,7 +179,7 @@ export default function PlanPage() {
 
       <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
         <div className="space-y-4 min-w-0">
-          {rows ? (
+          {showingDraft ? (
             <>
               <div className="ai-glass !py-3 flex flex-wrap items-center gap-2.5 rise" data-testid="text-ai-draft-label">
                 <Icon name="spark" size={16} />
@@ -238,6 +243,11 @@ export default function PlanPage() {
                 <button className="btn btn-primary" onClick={accept} disabled={acceptM.isPending || draftM.isPending} data-testid="button-accept-plan-bottom"><Icon name="check" size={16} /> {acceptM.isPending ? "Accepting" : "Accept plan"}</button>
               </div>
             </>
+          ) : ev.plan_accepted ? (
+            <>
+              <Overview b={b} onEdit={() => setEditEvent(true)} />
+              <SavedPlanEditor bundle={b} />
+            </>
           ) : (
             <section className="glass relative rise !p-7 md:!p-9" data-testid="panel-no-draft">
               <Star size={14} className="absolute top-5 right-6" />
@@ -259,11 +269,11 @@ export default function PlanPage() {
               {draftM.isPending && <div className="mt-6 space-y-2" aria-live="polite">{[0, 1, 2].map((i) => <Skel key={i} className="h-10" />)}</div>}
             </section>
           )}
-          <CarriedTasks b={b} />
+          {!ev.plan_accepted && <CarriedTasks b={b} />}
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-7">
-          <Overview b={b} onEdit={() => setEditEvent(true)} />
+          {!ev.plan_accepted && <Overview b={b} onEdit={() => setEditEvent(true)} />}
           {b.previous && (
             <section className="ai-glass rise" data-testid="panel-previous-lesson">
               <div className="font-mono-ui text-[11px] uppercase tracking-[0.16em] mb-2 flex items-center gap-2" style={{ color: "#5A4A0A" }}><Icon name="loop" size={14} /> Pulled from {b.previous.event.name}</div>

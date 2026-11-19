@@ -17,7 +17,7 @@ import VolunteerPrivatePage from '@/pages/volunteer';
 import { EncoreProvider, useSessionQuery } from '@/lib/session';
 import { EchoMark, ErrorPanel, Orbs } from '@/components/brand';
 import { errorMessage } from '@/lib/encore';
-import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
@@ -39,6 +39,11 @@ function Redirect({ to }: { to: string }) {
   const [, navigate] = useLocation();
   useEffect(() => { navigate(to, { replace: true }); }, [to, navigate]);
   return <Splash />;
+}
+
+function LegacyWrapupRedirect() {
+  const params = useParams<{ id: string }>();
+  return <Redirect to={`/app/events/${params.id}/wrapup`} />;
 }
 
 function Gate() {
@@ -70,7 +75,8 @@ function Gate() {
           <Route path="/app/events/:id/plan" component={PlanPage} />
           <Route path="/app/events/:id/tasks" component={TasksPage} />
           <Route path="/app/events/:id/volunteers" component={VolunteersPage} />
-          <Route path="/app/events/:id/recap" component={RecapPage} />
+          <Route path="/app/events/:id/wrapup" component={RecapPage} />
+          <Route path="/app/events/:id/recap" component={LegacyWrapupRedirect} />
           <Route path="/app/events/:id/next" component={NextEventPage} />
           <Route component={NotFound} />
         </Switch>

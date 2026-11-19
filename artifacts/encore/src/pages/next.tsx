@@ -51,8 +51,8 @@ export default function NextEventPage() {
   const ev = b.event;
   if (!b.recap) return (
     <Shell event={{ id: ev.id, name: ev.name }}>
-      <PageHeader title="New event from recap" subtitle={ev.name} />
-      <div className="glass !p-8 max-w-[560px]"><h2 className="font-display text-[24px]">Save a recap first.</h2><p className="text-muted-ink mt-2">The next event starts from what you learned. Fill in the recap, save it, then come back.</p><Link href={`/app/events/${id}/recap`} className="btn btn-primary mt-5" data-testid="link-to-recap">Open recap</Link></div>
+      <PageHeader title="New event from wrap-up" subtitle={ev.name} />
+      <div className="glass !p-8 max-w-[560px]"><h2 className="font-display text-[24px]">Save a wrap-up first.</h2><p className="text-muted-ink mt-2">The next event starts from what you learned. Fill in the wrap-up, save it, then come back.</p><Link href={`/app/events/${id}/wrapup`} className="btn btn-primary mt-5" data-testid="link-to-wrapup">Open wrap-up</Link></div>
     </Shell>
   );
   const r = b.recap;
@@ -81,8 +81,8 @@ export default function NextEventPage() {
 
   return (
     <Shell event={{ id: ev.id, name: ev.name }}>
-      <PageHeader title="New event from recap" subtitle="Lessons and contacts come with you"
-        actions={<Link href={`/app/events/${id}/recap`} className="btn btn-secondary" data-testid="link-back-recap">Back to recap</Link>} />
+      <PageHeader title="New event from wrap-up" subtitle="Lessons and resources come with you"
+        actions={<Link href={`/app/events/${id}/wrapup`} className="btn btn-secondary" data-testid="link-back-wrapup">Back to wrap-up</Link>} />
       <form onSubmit={submit} className="grid lg:grid-cols-[1fr_380px] gap-6 items-start" data-testid="form-next">
         <div className="space-y-4 min-w-0">
           <section className="glass">
@@ -107,7 +107,7 @@ export default function NextEventPage() {
         </div>
         <aside className="glass lg:sticky lg:top-7" data-testid="panel-starter-tasks">
           <h2 className="font-display text-[22px] mb-1">Starter tasks for Event {nextN}</h2>
-          <p className="text-[13px] text-muted-ink mb-3">From your recap's next event starter. Untick or edit any.</p>
+          <p className="text-[13px] text-muted-ink mb-3">From your wrap-up's next event starter. Untick or edit any.</p>
           <ul className="space-y-2">
             {items.map((it, i) => (
               <li key={i} className="flex items-center gap-2">
@@ -119,7 +119,7 @@ export default function NextEventPage() {
               <li key={`rec${t.id}`} className="flex items-center gap-2 text-[14px] pl-7"><span className="flex-1 font-semibold">{t.title}</span><span className="chip chip-gold">From last event</span></li>
             ))}
           </ul>
-          {items.length === 0 && <p className="text-[14px] text-muted-ink">No starter items on the recap. <Link href={`/app/events/${id}/recap`} className="underline">Add some</Link>.</p>}
+          {items.length === 0 && <p className="text-[14px] text-muted-ink">No starter items on the wrap-up. <Link href={`/app/events/${id}/wrapup`} className="underline">Add some</Link>.</p>}
           <button type="button" className="btn btn-ghost btn-sm mt-2" onClick={() => setItems((x) => [...x, { text: "", on: true }])} data-testid="button-add-starter"><Icon name="plus" size={14} /> Add task</button>
           <p className="text-[13px] text-muted-ink mt-3">{chosen.length} starter task{chosen.length === 1 ? "" : "s"} will be tagged "From last event". The AI plan stays optional.</p>
         </aside>
