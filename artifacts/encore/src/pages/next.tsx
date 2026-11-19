@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCreateNextEvent, useGetDashboard, getGetDashboardQueryKey, getListSeriesQueryKey } from "@workspace/api-client-react";
+import { useCreateNextEvent, useGetDashboard, useGetEventMap, getGetEventMapQueryKey, getGetDashboardQueryKey, getListSeriesQueryKey } from "@workspace/api-client-react";
 import { Shell, PageHeader } from "@/components/shell";
 import { ErrorPanel, Icon, Skel } from "@/components/brand";
 import { EVENT_TZ, errorMessage, errorStatus, zonedToUtcIso } from "@/lib/encore";
 import { useEventBundle } from "@/lib/use-event";
 import { useToast } from "@/hooks/use-toast";
 
-type Flags = { carry_lessons: boolean; carry_resources: boolean; carry_roles: boolean; carry_recurring: boolean; carry_volunteers: boolean };
+type Flags = { carry_lessons: boolean; carry_resources: boolean; carry_roles: boolean; carry_recurring: boolean; carry_volunteers: boolean; carry_map: boolean };
 
 function Check({ checked, onChange, disabled, title, detail, testid }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; title: string; detail: ReactNode; testid: string }) {
   return (
@@ -27,10 +27,11 @@ export default function NextEventPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const q = useEventBundle(id, 0);
+  const mapQuery = useGetEventMap(id, { query: { enabled: !!id, queryKey: getGetEventMapQueryKey(id) } });
   const sid = q.data?.series.id ?? 0;
   const dash = useGetDashboard(sid, { query: { enabled: !!sid, queryKey: getGetDashboardQueryKey(sid) } });
   const create = useCreateNextEvent();
-  const [flags, setFlags] = useState<Flags>({ carry_lessons: true, carry_resources: true, carry_roles: true, carry_recurring: true, carry_volunteers: true });
+  const [flags, setFlags] = useState<Flags>({ carry_lessons: true, carry_resources: true, carry_roles: true, carry_recurring: true, carry_volunteers: true, carry_map: true });
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("18:30");
@@ -68,7 +69,7 @@ export default function NextEventPage() {
     if (!name.trim()) return setErr("Name the new event.");
     if (!date || !time) return setErr("Pick a date and start time.");
     setErr(null);
-    create.mutate({ id, data: { name: name.trim(), starts_at: zonedToUtcIso(date, time, EVENT_TZ), ...flags, carry_roles: flags.carry_roles || flags.carry_volunteers, items: chosen.map((i) => i.text.trim()).slice(0, 30) } }, {
+    create.mutate({ id, data: { name: name.trim(), starts_at: zonedToUtcIso(date, time, EVENT_TZ), ...flags, carry_map: flags.carry_map && !!mapQuery.data?.map, carry_roles: flags.carry_roles || flags.carry_volunteers, items: chosen.map((i) => i.text.trim()).slice(0, 30) } }, {
       onSuccess: (nev) => {
         qc.invalidateQueries({ queryKey: getGetDashboardQueryKey(b.series.id) });
         qc.invalidateQueries({ queryKey: getListSeriesQueryKey() });
@@ -93,6 +94,9 @@ export default function NextEventPage() {
               <Check testid="check-roles" checked={flags.carry_roles || flags.carry_volunteers} disabled={flags.carry_volunteers} onChange={(v) => setFlag("carry_roles", v)} title="Volunteer roles" detail={<>{b.roles.length ? b.roles.map((x) => `${x.name} (${x.slots_needed})`).join(", ") : "No roles."}{flags.carry_volunteers && <span className="block" style={{ color: "#8A7330" }}>Kept on because returning volunteers need their roles.</span>}</>} />
               <Check testid="check-recurring" checked={flags.carry_recurring} onChange={(v) => setFlag("carry_recurring", v)} title="Recurring tasks" detail={recurring.length ? recurring.map((t) => t.title).join(", ") : "No tasks marked recurring."} />
               <Check testid="check-volunteers" checked={flags.carry_volunteers} onChange={(v) => setFlag("carry_volunteers", v)} title="Volunteers who said ask me again" detail={willing.length ? <>{willing.map((v) => v.email_consent && v.email ? `${v.name} (${v.email})` : v.name).join(", ")}<span className="block">Emails shown only for people who agreed to be emailed.</span></> : "Nobody ticked ask me again."} />
+              {mapQuery.isLoading && <p className="py-3 text-[13px] text-muted-ink">Checking for a Blueprint to carry over…</p>}
+              {mapQuery.isError && <div className="py-3 text-[13px] text-[#8A3426]" role="alert">The Blueprint could not be checked. <button type="button" className="underline" onClick={() => void mapQuery.refetch()}>Try again</button></div>}
+              {mapQuery.data?.map && <Check testid="check-map" checked={flags.carry_map} onChange={(v) => setFlag("carry_map", v)} title="Blueprint" detail={`${mapQuery.data.items.length} map items will come along. Vendor names are carried only when their resource is marked use again.`} />}
             </div>
           </section>
           <section className="glass">
@@ -103,7 +107,7 @@ export default function NextEventPage() {
             </div>
           </section>
           {err && <div className="rounded-xl px-4 py-3 text-[14px]" style={{ background: "rgba(166,64,47,0.08)", color: "#8A3426" }} role="alert">{err}</div>}
-          <button type="submit" className="btn btn-primary" disabled={create.isPending} data-testid="button-create-event-n">{create.isPending ? "Creating" : `Create Event ${nextN}`} <Icon name="arrow" size={15} /></button>
+          <button type="submit" className="btn btn-primary" disabled={create.isPending || mapQuery.isLoading || mapQuery.isError} data-testid="button-create-event-n">{create.isPending ? "Creating" : `Create Event ${nextN}`} <Icon name="arrow" size={15} /></button>
         </div>
         <aside className="glass lg:sticky lg:top-7" data-testid="panel-starter-tasks">
           <h2 className="font-display text-[22px] mb-1">Starter tasks for Event {nextN}</h2>

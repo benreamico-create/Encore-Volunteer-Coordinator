@@ -27,6 +27,8 @@ import type {
 import type {
   AiInput,
   AuthInput,
+  BlueprintMap,
+  BlueprintMapInput,
   Dashboard,
   Event,
   EventBundle,
@@ -35,6 +37,12 @@ import type {
   HealthStatus,
   HelperDraft,
   JoinResult,
+  MapItem,
+  MapItemInput,
+  MapItemUpdate,
+  MapSharingInput,
+  MapUploadInput,
+  MapUploadResponse,
   NextInput,
   Ok,
   PlanDraft,
@@ -52,6 +60,7 @@ import type {
   TaskInput,
   TaskUpdate,
   TickInput,
+  VolunteerMap,
   VolunteerPage
 } from './api.schemas';
 
@@ -1035,6 +1044,588 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getUpdateEventMutationOptions(options), queryClient);
+    }
+
+export const getGetEventMapUrl = (id: number,) => {
+
+
+
+
+  return `/api/events/${id}/map`
+}
+
+export const getEventMap = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<BlueprintMap> => {
+
+  return customFetch<BlueprintMap>(getGetEventMapUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEventMapQueryKey = (id: number,) => {
+    return [
+    `/api/events/${id}/map`
+    ] as const;
+    }
+
+
+export const getGetEventMapQueryOptions = <TData = Awaited<ReturnType<typeof getEventMap>>, TError = ErrorType<unknown>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEventMap>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEventMapQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEventMap>>> = ({ signal }) => getEventMap(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEventMap>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetEventMapQueryResult = NonNullable<Awaited<ReturnType<typeof getEventMap>>>
+export type GetEventMapQueryError = ErrorType<unknown>
+
+
+export function useGetEventMap<TData = Awaited<ReturnType<typeof getEventMap>>, TError = ErrorType<unknown>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEventMap>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEventMap>>,
+          TError,
+          Awaited<ReturnType<typeof getEventMap>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEventMap<TData = Awaited<ReturnType<typeof getEventMap>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEventMap>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEventMap>>,
+          TError,
+          Awaited<ReturnType<typeof getEventMap>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEventMap<TData = Awaited<ReturnType<typeof getEventMap>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEventMap>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetEventMap<TData = Awaited<ReturnType<typeof getEventMap>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEventMap>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetEventMapQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveEventMapUrl = (id: number,) => {
+
+
+
+
+  return `/api/events/${id}/map`
+}
+
+export const saveEventMap = async (id: number,
+    blueprintMapInput: BlueprintMapInput, options?: Parameters<typeof customFetch>[1]): Promise<BlueprintMap> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BlueprintMap>(getSaveEventMapUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(blueprintMapInput)
+  }
+);}
+
+
+
+
+
+export const getSaveEventMapMutationKey = () => ['saveEventMap'] as const;
+
+export const getSaveEventMapMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveEventMap>>, TError,SaveEventMapMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveEventMap>>, TError,SaveEventMapMutationVariables, TContext> => {
+
+const mutationKey = getSaveEventMapMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveEventMap>>, SaveEventMapMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  saveEventMap(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveEventMapMutationResult = NonNullable<Awaited<ReturnType<typeof saveEventMap>>>
+    export type SaveEventMapMutationBody = BodyType<BlueprintMapInput>
+    export type SaveEventMapMutationError = ErrorType<unknown>
+    export type SaveEventMapMutationVariables = {id: number;data: BodyType<BlueprintMapInput>}
+
+    export const useSaveEventMap = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveEventMap>>, TError,SaveEventMapMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof saveEventMap>>,
+        TError,
+        SaveEventMapMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveEventMapMutationOptions(options), queryClient);
+    }
+
+export const getRequestMapUploadUrlUrl = (id: number,) => {
+
+
+
+
+  return `/api/events/${id}/map/upload-url`
+}
+
+export const requestMapUploadUrl = async (id: number,
+    mapUploadInput: MapUploadInput, options?: Parameters<typeof customFetch>[1]): Promise<MapUploadResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<MapUploadResponse>(getRequestMapUploadUrlUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(mapUploadInput)
+  }
+);}
+
+
+
+
+
+export const getRequestMapUploadUrlMutationKey = () => ['requestMapUploadUrl'] as const;
+
+export const getRequestMapUploadUrlMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestMapUploadUrl>>, TError,RequestMapUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestMapUploadUrl>>, TError,RequestMapUploadUrlMutationVariables, TContext> => {
+
+const mutationKey = getRequestMapUploadUrlMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestMapUploadUrl>>, RequestMapUploadUrlMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  requestMapUploadUrl(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestMapUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestMapUploadUrl>>>
+    export type RequestMapUploadUrlMutationBody = BodyType<MapUploadInput>
+    export type RequestMapUploadUrlMutationError = ErrorType<unknown>
+    export type RequestMapUploadUrlMutationVariables = {id: number;data: BodyType<MapUploadInput>}
+
+    export const useRequestMapUploadUrl = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestMapUploadUrl>>, TError,RequestMapUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestMapUploadUrl>>,
+        TError,
+        RequestMapUploadUrlMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestMapUploadUrlMutationOptions(options), queryClient);
+    }
+
+export const getCreateMapItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/events/${id}/map/items`
+}
+
+export const createMapItem = async (id: number,
+    mapItemInput: MapItemInput, options?: Parameters<typeof customFetch>[1]): Promise<MapItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<MapItem>(getCreateMapItemUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(mapItemInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMapItemMutationKey = () => ['createMapItem'] as const;
+
+export const getCreateMapItemMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMapItem>>, TError,CreateMapItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMapItem>>, TError,CreateMapItemMutationVariables, TContext> => {
+
+const mutationKey = getCreateMapItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMapItem>>, CreateMapItemMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createMapItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMapItemMutationResult = NonNullable<Awaited<ReturnType<typeof createMapItem>>>
+    export type CreateMapItemMutationBody = BodyType<MapItemInput>
+    export type CreateMapItemMutationError = ErrorType<unknown>
+    export type CreateMapItemMutationVariables = {id: number;data: BodyType<MapItemInput>}
+
+    export const useCreateMapItem = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMapItem>>, TError,CreateMapItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createMapItem>>,
+        TError,
+        CreateMapItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateMapItemMutationOptions(options), queryClient);
+    }
+
+export const getUpdateMapItemUrl = (id: number,
+    itemId: number,) => {
+
+
+
+
+  return `/api/events/${id}/map/items/${itemId}`
+}
+
+export const updateMapItem = async (id: number,
+    itemId: number,
+    mapItemUpdate: MapItemUpdate, options?: Parameters<typeof customFetch>[1]): Promise<MapItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<MapItem>(getUpdateMapItemUrl(id,itemId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(mapItemUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateMapItemMutationKey = () => ['updateMapItem'] as const;
+
+export const getUpdateMapItemMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMapItem>>, TError,UpdateMapItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMapItem>>, TError,UpdateMapItemMutationVariables, TContext> => {
+
+const mutationKey = getUpdateMapItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMapItem>>, UpdateMapItemMutationVariables> = (props) => {
+          const {id,itemId,data} = props ?? {};
+
+          return  updateMapItem(id,itemId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMapItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateMapItem>>>
+    export type UpdateMapItemMutationBody = BodyType<MapItemUpdate>
+    export type UpdateMapItemMutationError = ErrorType<unknown>
+    export type UpdateMapItemMutationVariables = {id: number;itemId: number;data: BodyType<MapItemUpdate>}
+
+    export const useUpdateMapItem = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMapItem>>, TError,UpdateMapItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateMapItem>>,
+        TError,
+        UpdateMapItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateMapItemMutationOptions(options), queryClient);
+    }
+
+export const getDeleteMapItemUrl = (id: number,
+    itemId: number,) => {
+
+
+
+
+  return `/api/events/${id}/map/items/${itemId}`
+}
+
+export const deleteMapItem = async (id: number,
+    itemId: number, options?: Parameters<typeof customFetch>[1]): Promise<Ok> => {
+
+  return customFetch<Ok>(getDeleteMapItemUrl(id,itemId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMapItemMutationKey = () => ['deleteMapItem'] as const;
+
+export const getDeleteMapItemMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMapItem>>, TError,DeleteMapItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMapItem>>, TError,DeleteMapItemMutationVariables, TContext> => {
+
+const mutationKey = getDeleteMapItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMapItem>>, DeleteMapItemMutationVariables> = (props) => {
+          const {id,itemId} = props ?? {};
+
+          return  deleteMapItem(id,itemId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMapItemMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMapItem>>>
+
+    export type DeleteMapItemMutationError = ErrorType<unknown>
+    export type DeleteMapItemMutationVariables = {id: number;itemId: number}
+
+    export const useDeleteMapItem = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMapItem>>, TError,DeleteMapItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMapItem>>,
+        TError,
+        DeleteMapItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteMapItemMutationOptions(options), queryClient);
+    }
+
+export const getUpdateMapSharingUrl = (id: number,) => {
+
+
+
+
+  return `/api/events/${id}/map-sharing`
+}
+
+export const updateMapSharing = async (id: number,
+    mapSharingInput: MapSharingInput, options?: Parameters<typeof customFetch>[1]): Promise<Ok> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Ok>(getUpdateMapSharingUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(mapSharingInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateMapSharingMutationKey = () => ['updateMapSharing'] as const;
+
+export const getUpdateMapSharingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMapSharing>>, TError,UpdateMapSharingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMapSharing>>, TError,UpdateMapSharingMutationVariables, TContext> => {
+
+const mutationKey = getUpdateMapSharingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMapSharing>>, UpdateMapSharingMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMapSharing(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMapSharingMutationResult = NonNullable<Awaited<ReturnType<typeof updateMapSharing>>>
+    export type UpdateMapSharingMutationBody = BodyType<MapSharingInput>
+    export type UpdateMapSharingMutationError = ErrorType<unknown>
+    export type UpdateMapSharingMutationVariables = {id: number;data: BodyType<MapSharingInput>}
+
+    export const useUpdateMapSharing = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMapSharing>>, TError,UpdateMapSharingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateMapSharing>>,
+        TError,
+        UpdateMapSharingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateMapSharingMutationOptions(options), queryClient);
     }
 
 export const getAcceptPlanUrl = (id: number,) => {
@@ -2585,6 +3176,101 @@ export function useGetVolunteerPage<TData = Awaited<ReturnType<typeof getVolunte
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetVolunteerPageQueryOptions(token,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetVolunteerMapUrl = (token: string,) => {
+
+
+
+
+  return `/api/public/v/${token}/map`
+}
+
+export const getVolunteerMap = async (token: string, options?: Parameters<typeof customFetch>[1]): Promise<VolunteerMap> => {
+
+  return customFetch<VolunteerMap>(getGetVolunteerMapUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetVolunteerMapQueryKey = (token: string,) => {
+    return [
+    `/api/public/v/${token}/map`
+    ] as const;
+    }
+
+
+export const getGetVolunteerMapQueryOptions = <TData = Awaited<ReturnType<typeof getVolunteerMap>>, TError = ErrorType<unknown>>(token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getVolunteerMap>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetVolunteerMapQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVolunteerMap>>> = ({ signal }) => getVolunteerMap(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: token !== null && token !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getVolunteerMap>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetVolunteerMapQueryResult = NonNullable<Awaited<ReturnType<typeof getVolunteerMap>>>
+export type GetVolunteerMapQueryError = ErrorType<unknown>
+
+
+export function useGetVolunteerMap<TData = Awaited<ReturnType<typeof getVolunteerMap>>, TError = ErrorType<unknown>>(
+ token: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getVolunteerMap>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getVolunteerMap>>,
+          TError,
+          Awaited<ReturnType<typeof getVolunteerMap>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetVolunteerMap<TData = Awaited<ReturnType<typeof getVolunteerMap>>, TError = ErrorType<unknown>>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getVolunteerMap>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getVolunteerMap>>,
+          TError,
+          Awaited<ReturnType<typeof getVolunteerMap>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetVolunteerMap<TData = Awaited<ReturnType<typeof getVolunteerMap>>, TError = ErrorType<unknown>>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getVolunteerMap>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetVolunteerMap<TData = Awaited<ReturnType<typeof getVolunteerMap>>, TError = ErrorType<unknown>>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getVolunteerMap>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetVolunteerMapQueryOptions(token,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

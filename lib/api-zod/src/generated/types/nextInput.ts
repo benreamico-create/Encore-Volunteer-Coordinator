@@ -18,6 +18,7 @@ export interface NextInput {
   carry_roles: boolean;
   carry_recurring: boolean;
   carry_volunteers: boolean;
+  carry_map: boolean;
   /**
      * @maxItems 30
      * @items.maxLength 1000

@@ -10,6 +10,7 @@ import tasksRouter from "./routes/tasks";
 import publicRouter from "./routes/public";
 import recapsRouter from "./routes/recaps";
 import demoRouter from "./routes/demo";
+import mapsRouter from "./routes/maps";
 
 const app: Express = express();
 app.set("trust proxy", 1);
@@ -46,6 +47,7 @@ app.use("/api", csrfProtection, authRouter);
 
 app.use("/api", router);
 app.use("/api", eventsRouter);
+app.use("/api", mapsRouter);
 app.use("/api", tasksRouter, publicRouter);
 app.use("/api", recapsRouter, demoRouter);
 const errors: ErrorRequestHandler = (err, req, res, _next) => {

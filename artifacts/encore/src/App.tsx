@@ -14,6 +14,8 @@ import RecapPage from '@/pages/recap';
 import NextEventPage from '@/pages/next';
 import JoinPage from '@/pages/join';
 import VolunteerPrivatePage from '@/pages/volunteer';
+import BlueprintPage from '@/pages/blueprint';
+import VolunteerMapPage from '@/pages/volunteer-map';
 import { EncoreProvider, useSessionQuery } from '@/lib/session';
 import { EchoMark, ErrorPanel, Orbs } from '@/components/brand';
 import { errorMessage } from '@/lib/encore';
@@ -75,6 +77,7 @@ function Gate() {
           <Route path="/app/events/:id/plan" component={PlanPage} />
           <Route path="/app/events/:id/tasks" component={TasksPage} />
           <Route path="/app/events/:id/volunteers" component={VolunteersPage} />
+          <Route path="/app/events/:id/blueprint" component={BlueprintPage} />
           <Route path="/app/events/:id/wrapup" component={RecapPage} />
           <Route path="/app/events/:id/recap" component={LegacyWrapupRedirect} />
           <Route path="/app/events/:id/next" component={NextEventPage} />
@@ -92,6 +95,7 @@ function Entry() {
       <RoutedErrorBoundary>
         <Switch>
           <Route path="/join/:slug" component={JoinPage} />
+          <Route path="/v/:token/map" component={VolunteerMapPage} />
           <Route path="/v/:token" component={VolunteerPrivatePage} />
           <Route component={NotFound} />
         </Switch>

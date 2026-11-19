@@ -116,6 +116,58 @@ try {
       assert.equal(privatePage.tasks.length,1); assert(!("email" in privatePage));
       const live=await a.call(`/events/${event.id}`);
       const volunteer=live.volunteers[0]; assert.equal(volunteer.email,null);
+      const emptyMap=await a.call(`/events/${event.id}/map`);
+      assert.equal(emptyMap.map,null); assert.equal(emptyMap.items.length,0); assert.equal(emptyMap.map_shared,false);
+      await b.call(`/events/${event.id}/map`,"GET",undefined,404);
+      await a.call(`/events/${event.id}/map/upload-url`,"POST",{name:"bad.gif",size:25,contentType:"image/gif"},400);
+      const blankMap=await a.call(`/events/${event.id}/map`,"PUT",{source:"blank"});
+      assert.equal(blankMap.map.source,"blank");
+      const booth=await a.call(`/events/${event.id}/map/items`,"POST",{
+        kind:"booth",label:"Booth 1",x_pct:5,y_pct:8,w_pct:12,h_pct:10,vendor_name:"Temporary vendor",needs_text:"Power"
+      });
+      await a.call(`/events/${event.id}/map/items`,"POST",{
+        kind:"booth",label:"Outside",x_pct:95,y_pct:8,w_pct:10,h_pct:10
+      },400);
+      const station=await a.call(`/events/${event.id}/map/items`,"POST",{
+        kind:"station",label:"Check-in",x_pct:40,y_pct:30,w_pct:12,h_pct:8,role_id:role.id
+      });
+      await a.call(`/events/${event.id}/map/items`,"POST",{
+        kind:"station",label:"Wrong event role",x_pct:40,y_pct:30,w_pct:12,h_pct:8,role_id:999999
+      },404);
+      const editedBooth=await a.call(`/events/${event.id}/map/items/${booth.id}`,"PATCH",{label:"Booth One",vendor_name:"Updated fictional vendor"});
+      assert.equal(editedBooth.label,"Booth One");
+      const removable=await a.call(`/events/${event.id}/map/items`,"POST",{
+        kind:"zone",label:"Temporary zone",x_pct:70,y_pct:20,w_pct:8,h_pct:10
+      });
+      await a.call(`/events/${event.id}/map/items/${removable.id}`,"DELETE");
+      await a.call(`/events/${event.id}/map-sharing`,"PATCH",{map_shared:true});
+      const volunteerMap=await publicClient.call(`/public/v/${joined.token}/map`);
+      assert.equal(volunteerMap.available,true);
+      assert.equal(volunteerMap.own_station_id,station.id);
+      assert.equal(volunteerMap.map.source,"blank");
+      assert.equal(volunteerMap.items.length,2);
+      assert.equal((await publicClient.call(`/public/v/${joined.token}`)).has_map_post,true);
+      await a.call(`/events/${event.id}/map-sharing`,"PATCH",{map_shared:false});
+      assert.equal((await publicClient.call(`/public/v/${joined.token}/map`)).available,false);
+      assert.equal((await publicClient.call(`/public/v/${joined.token}`)).has_map_post,false);
+      const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/qioAAAAASUVORK5CYII=","base64");
+      const upload=await a.call(`/events/${event.id}/map/upload-url`,"POST",{name:"fictional-floor-plan.png",size:png.length,contentType:"image/png"});
+      const put=await fetch(upload.uploadURL,{method:"PUT",headers:{"Content-Type":"image/png"},body:png});
+      assert.equal(put.ok,true,`Direct map upload failed: ${put.status}`);
+      const uploadedMap=await a.call(`/events/${event.id}/map`,"PUT",{source:"upload",objectPath:upload.objectPath,image_width:1,image_height:1});
+      assert.equal(uploadedMap.map.source,"upload"); assert.equal(uploadedMap.map.image_width,1); assert.equal(uploadedMap.map.image_name,"fictional-floor-plan.png");
+      const cookie=[...a.cookies].map(([name,value])=>`${name}=${value}`).join("; ");
+      const organizerImage=await fetch(`${base}/events/${event.id}/map/image`,{headers:{Cookie:cookie}});
+      assert.equal(organizerImage.status,200); assert.equal(organizerImage.headers.get("content-type"),"image/png");
+      assert.deepEqual(Buffer.from(await organizerImage.arrayBuffer()),png);
+      await b.call(`/events/${event.id}/map/image`,"GET",undefined,404);
+      await a.call(`/events/${event.id}/map-sharing`,"PATCH",{map_shared:true});
+      const volunteerImage=await fetch(`${base}/public/v/${joined.token}/map/image`);
+      assert.equal(volunteerImage.status,200); assert.deepEqual(Buffer.from(await volunteerImage.arrayBuffer()),png);
+      await a.call(`/events/${event.id}/map-sharing`,"PATCH",{map_shared:false});
+      assert.equal((await fetch(`${base}/public/v/${joined.token}/map/image`)).status,404);
+      const blankAgain=await a.call(`/events/${event.id}/map`,"PUT",{source:"blank"});
+      assert.equal(blankAgain.map.source,"blank"); assert.equal(blankAgain.map.image_url,null); assert.equal(blankAgain.items.length,2);
       const safeguardedRole=await a.call(`/events/${event.id}/roles`,"POST",{name:"Fictional capacity safeguard",instruction:"Capacity test",slots_needed:3});
       const capacityOne=await publicClient.call(`/public/join/${event.signup_slug}`,"POST",{name:"Fictional Morgan",role_id:safeguardedRole.id,email_consent:false,ask_again:false});
       const capacityTwo=await publicClient.call(`/public/join/${event.signup_slug}`,"POST",{name:"Fictional Casey",role_id:safeguardedRole.id,email_consent:false,ask_again:false});
@@ -171,28 +223,42 @@ try {
         const recurring=await a.call(`/events/${event.id}/tasks`,"POST",{title:"Repeat this fictional task",recurring:true,assignee_user_id:signed.user.id,due_date:"2027-03-18"});
         const recap={registered:80,attended:60,what_worked:"Small groups",what_didnt:"Late briefing",top_lesson:"Brief the team earlier",rating_overall:4,rating_venue:3,rating_volunteers:5,resources:[
           {name:"Fictional room",kind:"venue",note:"Bright and flexible",use_again:true},
-          {name:"Do not reuse this fictional vendor",kind:"vendor",note:"Not a fit",use_again:false}
+          {name:"Do not reuse this fictional vendor",kind:"vendor",note:"Not a fit",use_again:false},
+          {name:"Fictional map vendor",kind:"vendor",note:"Use again",use_again:true}
         ],items:["Brief the team earlier","Repeat small groups","Reuse the fictional room"]};
         await a.call(`/events/${event.id}/recap`,"PUT",recap);
+        await a.call(`/events/${event.id}/map/items`,"POST",{
+          kind:"booth",label:"Booth with reusable vendor",x_pct:10,y_pct:50,w_pct:14,h_pct:12,vendor_name:"Fictional map vendor"
+        });
+        await a.call(`/events/${event.id}/map/items`,"POST",{
+          kind:"booth",label:"Booth with nonreusable vendor",x_pct:30,y_pct:50,w_pct:14,h_pct:12,vendor_name:"Do not reuse this fictional vendor"
+        });
         const saved=await a.call(`/events/${event.id}`);
-        assert.equal(saved.recap.attended/saved.recap.registered,.75); assert.equal(saved.resources.length,2);
+        assert.equal(saved.recap.attended/saved.recap.registered,.75); assert.equal(saved.resources.length,3);
         const starter=await a.call("/ai/starter","POST",{event_id:event.id,recap});
         assert(starter.items.length>=3&&starter.items.length<=7); assert.match(starter.notice,/template/);
         await pool.query("INSERT INTO ai_usage(user_id,month,call_count) VALUES($1,$2,150) ON CONFLICT(user_id,month) DO UPDATE SET call_count=150",[signed.user.id,new Date().toISOString().slice(0,7)]);
         const capped=await a.call("/ai/helper","POST",{event_id:event.id,question:"Check the limit"});
         assert.equal(capped.ai_remaining,0); assert.match(capped.notice,/limit is reached/);
-        const input={name:"Fictional next event",starts_at:"2027-04-20T01:00:00Z",carry_lessons:true,carry_resources:true,carry_roles:true,carry_recurring:true,carry_volunteers:true,items:["An edited starter task"]};
+        const input={name:"Fictional next event",starts_at:"2027-04-20T01:00:00Z",carry_lessons:true,carry_resources:true,carry_roles:true,carry_recurring:true,carry_volunteers:true,carry_map:true,items:["An edited starter task"]};
         const next=await a.call(`/events/${event.id}/next`,"POST",input);
         const nb=await a.call(`/events/${next.id}`);
         assert.equal(nb.event.previous_event_id,event.id); assert.equal(nb.event.carried_lesson,recap.top_lesson);
-        assert.equal(nb.resources.length,1); assert.equal(nb.volunteers.length,1); assert.equal(nb.volunteers[0].name,"Fictional Priya"); assert.equal(nb.volunteers[0].email,"consented@example.invalid");
+        assert.equal(nb.resources.length,2); assert.equal(nb.volunteers.length,1); assert.equal(nb.volunteers[0].name,"Fictional Priya"); assert.equal(nb.volunteers[0].email,"consented@example.invalid");
+        const nextMap=await a.call(`/events/${next.id}/map`);
+        assert.equal(nextMap.items.length,4);
+        assert.equal(nextMap.map.source,"blank");
+        assert.equal((await a.call(`/events/${next.id}`)).event.map_shared,false);
+        assert.equal(nextMap.items.find(i=>i.label==="Booth with reusable vendor").vendor_name,"Fictional map vendor");
+        assert.equal(nextMap.items.find(i=>i.label==="Booth with nonreusable vendor").vendor_name,null);
         assert.notEqual(nb.volunteers[0].token,willing.token);
         assert.equal(nb.roles.length,accepted.roles.length+1);
         assert(nb.tasks.some(t=>t.title==="An edited starter task"&&t.source==="starter"));
         assert(nb.tasks.some(t=>t.title===recurring.title&&t.source==="carryover"));
         assert.equal(nb.event.plan_accepted,false);
-        const blank=await a.call(`/events/${event.id}/next`,"POST",{...input,name:"Fictional no carry-over",carry_lessons:false,carry_resources:false,carry_roles:false,carry_recurring:false,carry_volunteers:false,items:[]});
+        const blank=await a.call(`/events/${event.id}/next`,"POST",{...input,name:"Fictional no carry-over",carry_lessons:false,carry_resources:false,carry_roles:false,carry_recurring:false,carry_volunteers:false,carry_map:false,items:[]});
         const bb=await a.call(`/events/${blank.id}`); assert.equal(bb.resources.length,0); assert.equal(bb.roles.length,0); assert.equal(bb.tasks.length,0); assert.equal(bb.volunteers.length,0); assert.equal(bb.event.carried_lesson,"");
+        assert.equal((await a.call(`/events/${blank.id}/map`)).map,null);
         const reminder=await a.call(`/events/${event.id}/reminder`); assert(reminder.drafts.some(d=>d.name==="Fictional Priya"&&d.message.includes("/v/"))); assert(!reminder.message.includes("/v/")); assert.equal(reminder.email_enabled,false);
         await b.call(`/events/${event.id}/recap`,"PUT",recap,404);
         await b.call(`/events/${event.id}/next`,"POST",input,404);

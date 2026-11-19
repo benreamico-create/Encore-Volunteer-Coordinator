@@ -47,7 +47,7 @@ function NavList({ event, onNavigate, mobile = false }: { event: ShellEvent; onN
     { label: "Plan", icon: "plan", href: event ? `/app/events/${event.id}/plan` : null },
     { label: "Tasks", icon: "tasks", href: event ? `/app/events/${event.id}/tasks` : null },
     { label: "Volunteers", icon: "people", href: event ? `/app/events/${event.id}/volunteers` : null },
-    { label: "Blueprint", icon: "map", href: null, soon: true },
+    { label: "Blueprint", icon: "map", href: event ? `/app/events/${event.id}/blueprint` : null },
     { label: "Chat", icon: "chat", href: null, soon: true },
     { label: "Sponsors", icon: "tag", href: null, soon: true },
     { label: "Wrap-up", icon: "loop", href: event ? `/app/events/${event.id}/wrapup` : null },

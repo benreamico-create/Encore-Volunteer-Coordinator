@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
+import { Link, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGetVolunteerPage, useTickVolunteerTask, getGetVolunteerPageQueryKey, type VolunteerPage } from "@workspace/api-client-react";
 import { PublicFrame, PublicMessage } from "@/components/public-frame";
@@ -89,6 +89,7 @@ export default function VolunteerPrivatePage() {
           <h2 className="font-display text-[20px] mb-3">Your checklist</h2>
           <Checklist token={token} page={p} />
         </section>
+        {p.has_map_post && <Link href={`/v/${token}/map`} className="btn btn-secondary w-full mt-4" data-testid="link-volunteer-map"><Icon name="pin" size={15} /> See my post on the map</Link>}
         {ev.event_day_notes && (
           <section className="glass mt-4 rise" style={{ animationDelay: "140ms" }} data-testid="panel-day-notes">
             <div className="mono-label mb-2">Notes from the organizers</div>
@@ -123,6 +124,7 @@ export default function VolunteerPrivatePage() {
               {(ev.place_text || ev.city) && <div className="flex items-center gap-2.5"><Icon name="pin" size={17} /> {[ev.place_text, ev.city].filter(Boolean).join(", ")}</div>}
             </div>
           </section>
+          {p.has_map_post && <Link href={`/v/${token}/map`} className="btn btn-secondary w-full mt-4 rise" data-testid="link-volunteer-map"><Icon name="pin" size={15} /> See my post on the map</Link>}
           <section className="ai-glass mt-4 rise" style={{ animationDelay: "140ms" }}>
             <p className="font-semibold">Bookmark this page. It is your link for the day.</p>
             <p className="text-[13px] mt-1">On the event day it turns into your checklist.</p>

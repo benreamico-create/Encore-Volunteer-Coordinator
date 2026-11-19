@@ -45,7 +45,12 @@ router.get("/public/v/:token",async(req,res)=>{
   const safeTasks=tasks.map(t=>({...t,assignee_volunteer_id:null,assignee_user_id:null}));
   const today=new Intl.DateTimeFormat("en-CA",{timeZone:event.timezone}).format(new Date());
   const eventDate=new Intl.DateTimeFormat("en-CA",{timeZone:event.timezone}).format(new Date(event.starts_at));
-  res.json(GetVolunteerPageResponse.parse(wire({name:v.name,status:v.status,role,event:publicEvent(event,true),tasks:safeTasks,event_day:event.event_day_mode||today===eventDate})));
+  const hasMapPost = v.status === "confirmed" && !!(await one(
+    `SELECT i.id FROM map_items i JOIN maps m ON m.id=i.map_id JOIN events e ON e.id=m.event_id
+     WHERE e.id=$1 AND e.map_shared=true AND i.kind='station' AND i.role_id=$2 LIMIT 1`,
+    [event.id, role.id],
+  ));
+  res.json(GetVolunteerPageResponse.parse(wire({name:v.name,status:v.status,role,event:publicEvent(event,true),tasks:safeTasks,event_day:event.event_day_mode||today===eventDate,has_map_post:hasMapPost})));
 });
 router.patch("/public/v/:token/tasks/:itemId",async(req,res)=>{
   await rateLimit(req,"public-tick",500);

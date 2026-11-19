@@ -78,19 +78,30 @@ The API self-test runs phase checks in order and deletes its own randomized fict
 - Public signup, honeypot, simultaneous capacity submissions, closed/full roles, email consent and private-token isolation.
 - Event-day mode and checklist-to-board sync; volunteer removal and automatic task cleanup.
 - Recap persistence, computed show rate, template starter, selected carry-over, fresh volunteer tokens and ask-again/email consent rules.
+- Blueprint map CRUD, percentage bounds, organizer isolation, direct private PNG upload and validation, organizer/linked-volunteer image access, immediate unsharing, cleanup and selected map carry-over.
 - Private reminder drafts with sending off and idempotent fictional demo loading.
 
-These are API integration checks, not an end-to-end browser certification. The complete PRD 0.6 browser checklist (including drag/touch interactions and every authenticated screen at both 375px and 1280px) remains the release gate before the next v2.1 tier. Do not treat a typecheck as proof of those interactions.
+These are API integration checks, not an end-to-end browser certification. The complete authenticated-browser checklist (including drag/touch interactions and every authenticated screen at both 375px and 1280px) remains a release gate. Do not treat a typecheck as proof of those interactions.
 
 ### v2.1 Tier 1 status
 
-Tier 1 updates the existing app in place. The 72px desktop rail and mobile bottom tabs are live; unfinished Blueprint, Chat and Sponsors destinations are clearly marked as coming soon. The database update only adds event edit metadata and keeps the existing recap table and columns. The saved Plan view edits existing records and adds suggestions without replacing accepted work. The new plan suggestion endpoint applies selected additions in one transaction. No Blueprint, Chat, announcements, sponsor board or Google sign-in implementation is included in Tier 1.
+Tier 1 updated the existing app in place. The 72px desktop rail and mobile bottom tabs are live; Chat and Sponsors remain marked as coming soon. The saved Plan view edits existing records and adds suggestions without replacing accepted work. The new plan suggestion endpoint applies selected additions in one transaction.
 
 To check this tier, use the `/app` series dashboard, open a finished event and select **Create next event**; open a planned event and edit its Plan; edit a due-date task, then change the event date and choose whether to shift unfinished task deadlines; lower role capacity below existing sign-ups and confirm it is blocked; open **Wrap-up** and save notes; visit the old `/recap` URL and confirm it redirects; resize below 900px to see the bottom tabs. The update prompt's one-time "Update demo data" action is deferred until the later v2.1 demo features exist.
 
-Tier 1 verification passed `pnpm run typecheck`, all four API self-test phases, and the Encore production build. The screenshot check covered the signup/login screen only; authenticated Plan, Wrap-up, and mobile screens still need visual review. No live AI calls or emails were sent.
+Tier 1 verification passed `pnpm run typecheck`, all four API self-test phases, and the Encore production build. No live AI calls or emails were sent.
+
+### v2.1 Tier 2 Blueprint status
+
+Blueprint adds an event-specific private venue map, PNG/JPG upload (5 MB maximum) or a blank grid, draggable/resizable booth, station, zone, stage, and entrance items, station-to-role links, map sharing, and a token-scoped volunteer view. Coordinates are percentages, so item placement survives viewport resizing. Map images are stored in private App Storage and served only after the organizer session or a volunteer token with sharing enabled and a linked station is checked. New events can optionally carry map items; sharing starts off, and booth vendor names carry only when the matching vendor resource is marked “use again.”
+
+Apply the additive map schema with `artifacts/api-server/scripts/setup-dev-db.mjs` in development. Production environments must apply `lib/db/schema-phase4.sql` before serving Blueprint routes. Existing event, role, task, and volunteer records are preserved.
+
+The following remain outside Tier 2: chat and announcements (Tier 3); P1 map helper hints and resource-to-booth placement; P1 sponsors, email, Google sign-in, and helper drawer. The authenticated desktop/mobile interaction pass remains a separate release check. No paid AI calls or email messages are needed for Blueprint.
 
 Initial verification passed all four API phase checks and the full project typecheck. Screenshots confirmed signup/login at 1280px and 375px, volunteer signup at 375px and 1280px (including a full role), and volunteer confirmation/event-day views at 375px. Temporary visual-test data was removed afterwards. No paid model calls or emails were sent.
+
+Blueprint verification also passed all four API phases, full project typecheck, API server build and Encore production build. The map test exercises a real private App Storage upload/download/delete cycle and confirms organizer and linked-volunteer access, unsharing revocation, map item behavior and carry-forward. The authenticated Blueprint editor itself remains part of the separate desktop/mobile browser release check.
 
 Event-editor/task-board regression verification also passed all four API phases, the full typecheck and the frontend production build. A signed-in browser pass at 1280px verified event editing, save/cancel, reload persistence, pointer-dragging dated tasks through all three columns, same-column reordering and the Status selector. At 375px it verified the scrollable editor, accessible save/cancel controls, status changes and no horizontal overflow. Touch-hold dragging was not exercised because the test browser lacks touch emulation; this is not a claim that the entire PRD 0.6 release gate has passed.
 

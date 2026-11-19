@@ -240,6 +240,7 @@ export const GetDashboardResponse = zod.object({
   "signups_open": zod.boolean(),
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
+  "map_shared": zod.boolean(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -276,6 +277,7 @@ export const GetDashboardResponse = zod.object({
   "signups_open": zod.boolean(),
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
+  "map_shared": zod.boolean(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -428,6 +430,7 @@ export const CreateEventResponse = zod.object({
   "signups_open": zod.boolean(),
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
+  "map_shared": zod.boolean(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -592,6 +595,7 @@ export const GetEventResponse = zod.object({
   "signups_open": zod.boolean(),
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
+  "map_shared": zod.boolean(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -705,6 +709,7 @@ export const GetEventResponse = zod.object({
   "signups_open": zod.boolean(),
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
+  "map_shared": zod.boolean(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -869,6 +874,7 @@ export const UpdateEventResponse = zod.object({
   "signups_open": zod.boolean(),
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
+  "map_shared": zod.boolean(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -882,6 +888,333 @@ export const UpdateEventResponse = zod.object({
   "updated_at": zod.coerce.date(),
   "updated_by_name": zod.string().nullable()
 }))
+
+
+export const GetEventMapParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const getEventMapResponseItemsItemOneLabelMax = 120;
+
+export const getEventMapResponseItemsItemOneXPctMin = 0;
+export const getEventMapResponseItemsItemOneXPctMax = 98;
+
+export const getEventMapResponseItemsItemOneYPctMin = 0;
+export const getEventMapResponseItemsItemOneYPctMax = 98;
+
+export const getEventMapResponseItemsItemOneWPctMin = 2;
+export const getEventMapResponseItemsItemOneWPctMax = 100;
+
+export const getEventMapResponseItemsItemOneHPctMin = 2;
+export const getEventMapResponseItemsItemOneHPctMax = 100;
+
+export const getEventMapResponseItemsItemOneVendorNameMax = 160;
+
+export const getEventMapResponseItemsItemOneNeedsTextMax = 1000;
+
+
+
+export const GetEventMapResponse = zod.object({
+  "map": zod.union([zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "source": zod.enum(['blank', 'upload']),
+  "image_name": zod.string().nullable(),
+  "image_mime": zod.string().nullable(),
+  "image_width": zod.number().int().nullable(),
+  "image_height": zod.number().int().nullable(),
+  "image_url": zod.string().nullable()
+}),zod.null()]),
+  "items": zod.array(zod.object({
+  "kind": zod.enum(['booth', 'station', 'zone', 'stage', 'entrance']),
+  "label": zod.string().min(1).max(getEventMapResponseItemsItemOneLabelMax),
+  "x_pct": zod.number().min(getEventMapResponseItemsItemOneXPctMin).max(getEventMapResponseItemsItemOneXPctMax),
+  "y_pct": zod.number().min(getEventMapResponseItemsItemOneYPctMin).max(getEventMapResponseItemsItemOneYPctMax),
+  "w_pct": zod.number().min(getEventMapResponseItemsItemOneWPctMin).max(getEventMapResponseItemsItemOneWPctMax),
+  "h_pct": zod.number().min(getEventMapResponseItemsItemOneHPctMin).max(getEventMapResponseItemsItemOneHPctMax),
+  "vendor_name": zod.string().max(getEventMapResponseItemsItemOneVendorNameMax).nullable(),
+  "needs_text": zod.string().max(getEventMapResponseItemsItemOneNeedsTextMax).nullable(),
+  "role_id": zod.number().int().nullable()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "map_id": zod.number().int(),
+  "vendor_name": zod.string().nullable(),
+  "needs_text": zod.string().nullable(),
+  "role_id": zod.number().int().nullable(),
+  "sort_order": zod.number()
+}))),
+  "map_shared": zod.boolean()
+})
+
+
+export const SaveEventMapParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const saveEventMapBodyObjectPathMax = 500;
+
+export const saveEventMapBodyImageWidthMax = 20000;
+
+export const saveEventMapBodyImageHeightMax = 20000;
+
+
+
+export const SaveEventMapBody = zod.object({
+  "source": zod.enum(['blank', 'upload']),
+  "objectPath": zod.string().max(saveEventMapBodyObjectPathMax).optional(),
+  "image_width": zod.number().int().min(1).max(saveEventMapBodyImageWidthMax).optional(),
+  "image_height": zod.number().int().min(1).max(saveEventMapBodyImageHeightMax).optional()
+})
+
+export const saveEventMapResponseItemsItemOneLabelMax = 120;
+
+export const saveEventMapResponseItemsItemOneXPctMin = 0;
+export const saveEventMapResponseItemsItemOneXPctMax = 98;
+
+export const saveEventMapResponseItemsItemOneYPctMin = 0;
+export const saveEventMapResponseItemsItemOneYPctMax = 98;
+
+export const saveEventMapResponseItemsItemOneWPctMin = 2;
+export const saveEventMapResponseItemsItemOneWPctMax = 100;
+
+export const saveEventMapResponseItemsItemOneHPctMin = 2;
+export const saveEventMapResponseItemsItemOneHPctMax = 100;
+
+export const saveEventMapResponseItemsItemOneVendorNameMax = 160;
+
+export const saveEventMapResponseItemsItemOneNeedsTextMax = 1000;
+
+
+
+export const SaveEventMapResponse = zod.object({
+  "map": zod.union([zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "source": zod.enum(['blank', 'upload']),
+  "image_name": zod.string().nullable(),
+  "image_mime": zod.string().nullable(),
+  "image_width": zod.number().int().nullable(),
+  "image_height": zod.number().int().nullable(),
+  "image_url": zod.string().nullable()
+}),zod.null()]),
+  "items": zod.array(zod.object({
+  "kind": zod.enum(['booth', 'station', 'zone', 'stage', 'entrance']),
+  "label": zod.string().min(1).max(saveEventMapResponseItemsItemOneLabelMax),
+  "x_pct": zod.number().min(saveEventMapResponseItemsItemOneXPctMin).max(saveEventMapResponseItemsItemOneXPctMax),
+  "y_pct": zod.number().min(saveEventMapResponseItemsItemOneYPctMin).max(saveEventMapResponseItemsItemOneYPctMax),
+  "w_pct": zod.number().min(saveEventMapResponseItemsItemOneWPctMin).max(saveEventMapResponseItemsItemOneWPctMax),
+  "h_pct": zod.number().min(saveEventMapResponseItemsItemOneHPctMin).max(saveEventMapResponseItemsItemOneHPctMax),
+  "vendor_name": zod.string().max(saveEventMapResponseItemsItemOneVendorNameMax).nullable(),
+  "needs_text": zod.string().max(saveEventMapResponseItemsItemOneNeedsTextMax).nullable(),
+  "role_id": zod.number().int().nullable()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "map_id": zod.number().int(),
+  "vendor_name": zod.string().nullable(),
+  "needs_text": zod.string().nullable(),
+  "role_id": zod.number().int().nullable(),
+  "sort_order": zod.number()
+}))),
+  "map_shared": zod.boolean()
+})
+
+
+export const RequestMapUploadUrlParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const requestMapUploadUrlBodyNameMax = 255;
+
+export const requestMapUploadUrlBodySizeMax = 5242880;
+
+
+
+export const RequestMapUploadUrlBody = zod.object({
+  "name": zod.string().min(1).max(requestMapUploadUrlBodyNameMax),
+  "size": zod.number().int().min(1).max(requestMapUploadUrlBodySizeMax),
+  "contentType": zod.enum(['image/png', 'image/jpeg'])
+})
+
+export const RequestMapUploadUrlResponse = zod.object({
+  "uploadURL": zod.string().url(),
+  "objectPath": zod.string()
+})
+
+
+export const CreateMapItemParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const createMapItemBodyLabelMax = 120;
+
+export const createMapItemBodyXPctMin = 0;
+export const createMapItemBodyXPctMax = 98;
+
+export const createMapItemBodyYPctMin = 0;
+export const createMapItemBodyYPctMax = 98;
+
+export const createMapItemBodyWPctMin = 2;
+export const createMapItemBodyWPctMax = 100;
+
+export const createMapItemBodyHPctMin = 2;
+export const createMapItemBodyHPctMax = 100;
+
+export const createMapItemBodyVendorNameMax = 160;
+
+export const createMapItemBodyNeedsTextMax = 1000;
+
+
+
+export const CreateMapItemBody = zod.object({
+  "kind": zod.enum(['booth', 'station', 'zone', 'stage', 'entrance']),
+  "label": zod.string().min(1).max(createMapItemBodyLabelMax),
+  "x_pct": zod.number().min(createMapItemBodyXPctMin).max(createMapItemBodyXPctMax),
+  "y_pct": zod.number().min(createMapItemBodyYPctMin).max(createMapItemBodyYPctMax),
+  "w_pct": zod.number().min(createMapItemBodyWPctMin).max(createMapItemBodyWPctMax),
+  "h_pct": zod.number().min(createMapItemBodyHPctMin).max(createMapItemBodyHPctMax),
+  "vendor_name": zod.string().max(createMapItemBodyVendorNameMax).nullish(),
+  "needs_text": zod.string().max(createMapItemBodyNeedsTextMax).nullish(),
+  "role_id": zod.number().int().nullish()
+})
+
+export const createMapItemResponseOneLabelMax = 120;
+
+export const createMapItemResponseOneXPctMin = 0;
+export const createMapItemResponseOneXPctMax = 98;
+
+export const createMapItemResponseOneYPctMin = 0;
+export const createMapItemResponseOneYPctMax = 98;
+
+export const createMapItemResponseOneWPctMin = 2;
+export const createMapItemResponseOneWPctMax = 100;
+
+export const createMapItemResponseOneHPctMin = 2;
+export const createMapItemResponseOneHPctMax = 100;
+
+export const createMapItemResponseOneVendorNameMax = 160;
+
+export const createMapItemResponseOneNeedsTextMax = 1000;
+
+
+
+export const CreateMapItemResponse = zod.object({
+  "kind": zod.enum(['booth', 'station', 'zone', 'stage', 'entrance']),
+  "label": zod.string().min(1).max(createMapItemResponseOneLabelMax),
+  "x_pct": zod.number().min(createMapItemResponseOneXPctMin).max(createMapItemResponseOneXPctMax),
+  "y_pct": zod.number().min(createMapItemResponseOneYPctMin).max(createMapItemResponseOneYPctMax),
+  "w_pct": zod.number().min(createMapItemResponseOneWPctMin).max(createMapItemResponseOneWPctMax),
+  "h_pct": zod.number().min(createMapItemResponseOneHPctMin).max(createMapItemResponseOneHPctMax),
+  "vendor_name": zod.string().max(createMapItemResponseOneVendorNameMax).nullable(),
+  "needs_text": zod.string().max(createMapItemResponseOneNeedsTextMax).nullable(),
+  "role_id": zod.number().int().nullable()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "map_id": zod.number().int(),
+  "vendor_name": zod.string().nullable(),
+  "needs_text": zod.string().nullable(),
+  "role_id": zod.number().int().nullable(),
+  "sort_order": zod.number()
+}))
+
+
+export const UpdateMapItemParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "itemId": zod.coerce.number().int()
+})
+
+export const updateMapItemBodyLabelMax = 120;
+
+export const updateMapItemBodyXPctMin = 0;
+export const updateMapItemBodyXPctMax = 98;
+
+export const updateMapItemBodyYPctMin = 0;
+export const updateMapItemBodyYPctMax = 98;
+
+export const updateMapItemBodyWPctMin = 2;
+export const updateMapItemBodyWPctMax = 100;
+
+export const updateMapItemBodyHPctMin = 2;
+export const updateMapItemBodyHPctMax = 100;
+
+export const updateMapItemBodyVendorNameMax = 160;
+
+export const updateMapItemBodyNeedsTextMax = 1000;
+
+
+
+export const UpdateMapItemBody = zod.object({
+  "kind": zod.enum(['booth', 'station', 'zone', 'stage', 'entrance']).optional(),
+  "label": zod.string().min(1).max(updateMapItemBodyLabelMax).optional(),
+  "x_pct": zod.number().min(updateMapItemBodyXPctMin).max(updateMapItemBodyXPctMax).optional(),
+  "y_pct": zod.number().min(updateMapItemBodyYPctMin).max(updateMapItemBodyYPctMax).optional(),
+  "w_pct": zod.number().min(updateMapItemBodyWPctMin).max(updateMapItemBodyWPctMax).optional(),
+  "h_pct": zod.number().min(updateMapItemBodyHPctMin).max(updateMapItemBodyHPctMax).optional(),
+  "vendor_name": zod.string().max(updateMapItemBodyVendorNameMax).nullish(),
+  "needs_text": zod.string().max(updateMapItemBodyNeedsTextMax).nullish(),
+  "role_id": zod.number().int().nullish()
+})
+
+export const updateMapItemResponseOneLabelMax = 120;
+
+export const updateMapItemResponseOneXPctMin = 0;
+export const updateMapItemResponseOneXPctMax = 98;
+
+export const updateMapItemResponseOneYPctMin = 0;
+export const updateMapItemResponseOneYPctMax = 98;
+
+export const updateMapItemResponseOneWPctMin = 2;
+export const updateMapItemResponseOneWPctMax = 100;
+
+export const updateMapItemResponseOneHPctMin = 2;
+export const updateMapItemResponseOneHPctMax = 100;
+
+export const updateMapItemResponseOneVendorNameMax = 160;
+
+export const updateMapItemResponseOneNeedsTextMax = 1000;
+
+
+
+export const UpdateMapItemResponse = zod.object({
+  "kind": zod.enum(['booth', 'station', 'zone', 'stage', 'entrance']),
+  "label": zod.string().min(1).max(updateMapItemResponseOneLabelMax),
+  "x_pct": zod.number().min(updateMapItemResponseOneXPctMin).max(updateMapItemResponseOneXPctMax),
+  "y_pct": zod.number().min(updateMapItemResponseOneYPctMin).max(updateMapItemResponseOneYPctMax),
+  "w_pct": zod.number().min(updateMapItemResponseOneWPctMin).max(updateMapItemResponseOneWPctMax),
+  "h_pct": zod.number().min(updateMapItemResponseOneHPctMin).max(updateMapItemResponseOneHPctMax),
+  "vendor_name": zod.string().max(updateMapItemResponseOneVendorNameMax).nullable(),
+  "needs_text": zod.string().max(updateMapItemResponseOneNeedsTextMax).nullable(),
+  "role_id": zod.number().int().nullable()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "map_id": zod.number().int(),
+  "vendor_name": zod.string().nullable(),
+  "needs_text": zod.string().nullable(),
+  "role_id": zod.number().int().nullable(),
+  "sort_order": zod.number()
+}))
+
+
+export const DeleteMapItemParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "itemId": zod.coerce.number().int()
+})
+
+export const DeleteMapItemResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+export const UpdateMapSharingParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateMapSharingBody = zod.object({
+  "map_shared": zod.boolean()
+})
+
+export const UpdateMapSharingResponse = zod.object({
+  "ok": zod.boolean()
+})
 
 
 export const AcceptPlanParams = zod.object({
@@ -1267,6 +1600,7 @@ export const CreateNextEventBody = zod.object({
   "carry_roles": zod.boolean(),
   "carry_recurring": zod.boolean(),
   "carry_volunteers": zod.boolean(),
+  "carry_map": zod.boolean(),
   "items": zod.array(zod.string().max(createNextEventBodyItemsItemMax)).max(createNextEventBodyItemsMax)
 })
 
@@ -1313,6 +1647,7 @@ export const CreateNextEventResponse = zod.object({
   "signups_open": zod.boolean(),
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
+  "map_shared": zod.boolean(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -1719,7 +2054,91 @@ export const GetVolunteerPageResponse = zod.object({
   "recurring": zod.boolean(),
   "sort_order": zod.number()
 }))),
-  "event_day": zod.boolean()
+  "event_day": zod.boolean(),
+  "has_map_post": zod.boolean()
+})
+
+
+export const GetVolunteerMapParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const getVolunteerMapResponseRoleOneNameMax = 120;
+
+export const getVolunteerMapResponseRoleOneInstructionMax = 2000;
+
+export const getVolunteerMapResponseRoleOneSlotsNeededMax = 100;
+
+export const getVolunteerMapResponseItemsItemOneLabelMax = 120;
+
+export const getVolunteerMapResponseItemsItemOneXPctMin = 0;
+export const getVolunteerMapResponseItemsItemOneXPctMax = 98;
+
+export const getVolunteerMapResponseItemsItemOneYPctMin = 0;
+export const getVolunteerMapResponseItemsItemOneYPctMax = 98;
+
+export const getVolunteerMapResponseItemsItemOneWPctMin = 2;
+export const getVolunteerMapResponseItemsItemOneWPctMax = 100;
+
+export const getVolunteerMapResponseItemsItemOneHPctMin = 2;
+export const getVolunteerMapResponseItemsItemOneHPctMax = 100;
+
+export const getVolunteerMapResponseItemsItemOneVendorNameMax = 160;
+
+export const getVolunteerMapResponseItemsItemOneNeedsTextMax = 1000;
+
+
+
+export const GetVolunteerMapResponse = zod.object({
+  "available": zod.boolean(),
+  "event": zod.object({
+  "name": zod.string(),
+  "starts_at": zod.string(),
+  "timezone": zod.string(),
+  "city": zod.string(),
+  "place_text": zod.string(),
+  "signups_open": zod.boolean(),
+  "event_day_notes": zod.string(),
+  "day_of_contact_text": zod.string()
+}),
+  "role": zod.object({
+  "name": zod.string().min(1).max(getVolunteerMapResponseRoleOneNameMax),
+  "instruction": zod.string().max(getVolunteerMapResponseRoleOneInstructionMax),
+  "slots_needed": zod.number().int().min(1).max(getVolunteerMapResponseRoleOneSlotsNeededMax)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "filled": zod.number().int()
+})),
+  "map": zod.union([zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "source": zod.enum(['blank', 'upload']),
+  "image_name": zod.string().nullable(),
+  "image_mime": zod.string().nullable(),
+  "image_width": zod.number().int().nullable(),
+  "image_height": zod.number().int().nullable(),
+  "image_url": zod.string().nullable()
+}),zod.null()]),
+  "items": zod.array(zod.object({
+  "kind": zod.enum(['booth', 'station', 'zone', 'stage', 'entrance']),
+  "label": zod.string().min(1).max(getVolunteerMapResponseItemsItemOneLabelMax),
+  "x_pct": zod.number().min(getVolunteerMapResponseItemsItemOneXPctMin).max(getVolunteerMapResponseItemsItemOneXPctMax),
+  "y_pct": zod.number().min(getVolunteerMapResponseItemsItemOneYPctMin).max(getVolunteerMapResponseItemsItemOneYPctMax),
+  "w_pct": zod.number().min(getVolunteerMapResponseItemsItemOneWPctMin).max(getVolunteerMapResponseItemsItemOneWPctMax),
+  "h_pct": zod.number().min(getVolunteerMapResponseItemsItemOneHPctMin).max(getVolunteerMapResponseItemsItemOneHPctMax),
+  "vendor_name": zod.string().max(getVolunteerMapResponseItemsItemOneVendorNameMax).nullable(),
+  "needs_text": zod.string().max(getVolunteerMapResponseItemsItemOneNeedsTextMax).nullable(),
+  "role_id": zod.number().int().nullable()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "map_id": zod.number().int(),
+  "vendor_name": zod.string().nullable(),
+  "needs_text": zod.string().nullable(),
+  "role_id": zod.number().int().nullable(),
+  "sort_order": zod.number()
+}))),
+  "own_station_id": zod.number().int().nullable()
 })
 
 

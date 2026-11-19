@@ -35,6 +35,35 @@ router.post("/events/:id/next",async(req,res)=>{
       const nr=await one("INSERT INTO roles(event_id,name,instruction,slots_needed,sort_order) VALUES($1,$2,$3,$4,$5) RETURNING id",[event.id,r.name,r.instruction,r.slots_needed,r.sort_order],client);
       roleMap.set(r.id,nr!.id);
     }
+    if(data.carry_map) {
+      const priorMap=await one("SELECT * FROM maps WHERE event_id=$1",[eid],client);
+      if(priorMap) {
+        const copiedMap=await one(
+          `INSERT INTO maps(event_id,source,image_path,image_name,image_mime,image_width,image_height)
+           VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+          [event.id,priorMap.source,priorMap.image_path,priorMap.image_name,priorMap.image_mime,priorMap.image_width,priorMap.image_height],
+          client,
+        );
+        const keepVendorNames=new Set(
+          data.carry_resources
+            ? recap.resources.filter((resource:any)=>resource.kind==="vendor"&&resource.use_again).map((resource:any)=>resource.name.trim().toLowerCase())
+            : [],
+        );
+        for(const item of await rows("SELECT * FROM map_items WHERE map_id=$1 ORDER BY sort_order,id",[priorMap.id],client)) {
+          await client.query(
+            `INSERT INTO map_items(map_id,kind,label,x_pct,y_pct,w_pct,h_pct,vendor_name,needs_text,role_id,sort_order)
+             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            [
+              copiedMap!.id,item.kind,item.label,item.x_pct,item.y_pct,item.w_pct,item.h_pct,
+              item.vendor_name&&keepVendorNames.has(String(item.vendor_name).trim().toLowerCase())?item.vendor_name:null,
+              item.needs_text??null,
+              item.role_id==null?null:(roleMap.get(Number(item.role_id))??null),
+              item.sort_order,
+            ],
+          );
+        }
+      }
+    }
     for(const v of willing) {
       const nv=await one("INSERT INTO volunteers(event_id,role_id,name,email,email_consent,ask_again,token) VALUES($1,$2,$3,$4,$5,true,$6) RETURNING id",[
         event.id,roleMap.get(v.role_id),v.name,v.email_consent?v.email:null,!!(v.email_consent&&v.email),randomBytes(24).toString("hex")],client);

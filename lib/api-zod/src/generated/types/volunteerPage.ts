@@ -16,4 +16,5 @@ export interface VolunteerPage {
   event: PublicEvent;
   tasks: Task[];
   event_day: boolean;
+  has_map_post: boolean;
 }

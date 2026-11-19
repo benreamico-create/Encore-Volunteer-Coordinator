@@ -18,6 +18,7 @@ export type Event = EventInput & ({
   signups_open: boolean;
   auto_task_from_signup: boolean;
   event_day_mode: boolean;
+  map_shared: boolean;
   event_day_notes?: string;
   day_of_contact_text?: string;
   timezone: string;

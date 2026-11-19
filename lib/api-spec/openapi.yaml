@@ -134,6 +134,103 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Event" }
+  /events/{id}/map:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      operationId: getEventMap
+      responses:
+        "200":
+          description: Organizer-only map and items, or an empty map state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlueprintMap" }
+    put:
+      operationId: saveEventMap
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BlueprintMapInput" }
+      responses:
+        "200":
+          description: Saved map background
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlueprintMap" }
+  /events/{id}/map/upload-url:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      operationId: requestMapUploadUrl
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MapUploadInput" }
+      responses:
+        "200":
+          description: Short-lived direct upload URL and private object path
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MapUploadResponse" }
+  /events/{id}/map/items:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      operationId: createMapItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MapItemInput" }
+      responses:
+        "200":
+          description: Created map item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MapItem" }
+  /events/{id}/map/items/{itemId}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/ItemId" }
+    patch:
+      operationId: updateMapItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MapItemUpdate" }
+      responses:
+        "200":
+          description: Updated map item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MapItem" }
+    delete:
+      operationId: deleteMapItem
+      responses:
+        "200":
+          description: Deleted map item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /events/{id}/map-sharing:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    patch:
+      operationId: updateMapSharing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MapSharingInput" }
+      responses:
+        "200":
+          description: Updated volunteer map visibility
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
   /events/{id}/accept-plan:
     parameters:
       - { $ref: "#/components/parameters/Id" }
@@ -389,6 +486,17 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/VolunteerPage" }
+  /public/v/{token}/map:
+    parameters:
+      - { name: token, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getVolunteerMap
+      responses:
+        "200":
+          description: Shared volunteer map and their station, or a safe unavailable state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VolunteerMap" }
   /public/v/{token}/tasks/{itemId}:
     parameters:
       - { name: token, in: path, required: true, schema: { type: string } }
@@ -498,7 +606,7 @@ components:
       allOf:
         - { $ref: "#/components/schemas/EventInput" }
         - type: object
-          required: [id, series_id, signup_slug, status, signups_open, auto_task_from_signup, event_day_mode, timezone, tasks_done, tasks_total, volunteers_count, roles_count, plan_accepted, updated_at, updated_by_name]
+          required: [id, series_id, signup_slug, status, signups_open, auto_task_from_signup, event_day_mode, map_shared, timezone, tasks_done, tasks_total, volunteers_count, roles_count, plan_accepted, updated_at, updated_by_name]
           properties:
             id: { type: integer }
             series_id: { type: integer }
@@ -508,6 +616,7 @@ components:
             signups_open: { type: boolean }
             auto_task_from_signup: { type: boolean }
             event_day_mode: { type: boolean }
+            map_shared: { type: boolean }
             event_day_notes: { type: string }
             day_of_contact_text: { type: string }
             timezone: { type: string }
@@ -719,7 +828,7 @@ components:
         ai_remaining: { type: integer }
     NextInput:
       type: object
-      required: [name, starts_at, carry_lessons, carry_resources, carry_roles, carry_recurring, carry_volunteers, items]
+      required: [name, starts_at, carry_lessons, carry_resources, carry_roles, carry_recurring, carry_volunteers, carry_map, items]
       properties:
         name: { type: string, minLength: 1, maxLength: 160 }
         starts_at: { type: string }
@@ -728,6 +837,7 @@ components:
         carry_roles: { type: boolean }
         carry_recurring: { type: boolean }
         carry_volunteers: { type: boolean }
+        carry_map: { type: boolean }
         items: { type: array, maxItems: 30, items: { type: string, maxLength: 1000 } }
     Reminder:
       type: object
@@ -782,7 +892,7 @@ components:
         token: { type: string }
     VolunteerPage:
       type: object
-      required: [name, status, role, event, tasks, event_day]
+      required: [name, status, role, event, tasks, event_day, has_map_post]
       properties:
         name: { type: string }
         status: { type: string }
@@ -790,6 +900,99 @@ components:
         event: { $ref: "#/components/schemas/PublicEvent" }
         tasks: { type: array, items: { $ref: "#/components/schemas/Task" } }
         event_day: { type: boolean }
+        has_map_post: { type: boolean }
+    MapUploadInput:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        size: { type: integer, minimum: 1, maximum: 5242880 }
+        contentType: { type: string, enum: [image/png, image/jpeg] }
+    MapUploadResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string }
+    MapSummary:
+      type: object
+      required: [id, event_id, source, image_name, image_mime, image_width, image_height, image_url]
+      properties:
+        id: { type: integer }
+        event_id: { type: integer }
+        source: { type: string, enum: [blank, upload] }
+        image_name: { type: [string, "null"] }
+        image_mime: { type: [string, "null"] }
+        image_width: { type: [integer, "null"] }
+        image_height: { type: [integer, "null"] }
+        image_url: { type: [string, "null"] }
+    MapItemInput:
+      type: object
+      required: [kind, label, x_pct, y_pct, w_pct, h_pct]
+      properties:
+        kind: { type: string, enum: [booth, station, zone, stage, entrance] }
+        label: { type: string, minLength: 1, maxLength: 120 }
+        x_pct: { type: number, minimum: 0, maximum: 98 }
+        y_pct: { type: number, minimum: 0, maximum: 98 }
+        w_pct: { type: number, minimum: 2, maximum: 100 }
+        h_pct: { type: number, minimum: 2, maximum: 100 }
+        vendor_name: { type: [string, "null"], maxLength: 160 }
+        needs_text: { type: [string, "null"], maxLength: 1000 }
+        role_id: { type: [integer, "null"] }
+    MapItemUpdate:
+      type: object
+      properties:
+        kind: { type: string, enum: [booth, station, zone, stage, entrance] }
+        label: { type: string, minLength: 1, maxLength: 120 }
+        x_pct: { type: number, minimum: 0, maximum: 98 }
+        y_pct: { type: number, minimum: 0, maximum: 98 }
+        w_pct: { type: number, minimum: 2, maximum: 100 }
+        h_pct: { type: number, minimum: 2, maximum: 100 }
+        vendor_name: { type: [string, "null"], maxLength: 160 }
+        needs_text: { type: [string, "null"], maxLength: 1000 }
+        role_id: { type: [integer, "null"] }
+    MapItem:
+      allOf:
+        - { $ref: "#/components/schemas/MapItemInput" }
+        - type: object
+          required: [id, map_id, vendor_name, needs_text, role_id, sort_order]
+          properties:
+            id: { type: integer }
+            map_id: { type: integer }
+            vendor_name: { type: [string, "null"] }
+            needs_text: { type: [string, "null"] }
+            role_id: { type: [integer, "null"] }
+            sort_order: { type: number }
+    BlueprintMapInput:
+      type: object
+      required: [source]
+      properties:
+        source: { type: string, enum: [blank, upload] }
+        objectPath: { type: string, maxLength: 500 }
+        image_width: { type: integer, minimum: 1, maximum: 20000 }
+        image_height: { type: integer, minimum: 1, maximum: 20000 }
+    BlueprintMap:
+      type: object
+      required: [map, items, map_shared]
+      properties:
+        map: { anyOf: [{ $ref: "#/components/schemas/MapSummary" }, { type: "null" }] }
+        items: { type: array, items: { $ref: "#/components/schemas/MapItem" } }
+        map_shared: { type: boolean }
+    MapSharingInput:
+      type: object
+      required: [map_shared]
+      properties:
+        map_shared: { type: boolean }
+    VolunteerMap:
+      type: object
+      required: [available, event, role, map, items, own_station_id]
+      properties:
+        available: { type: boolean }
+        event: { $ref: "#/components/schemas/PublicEvent" }
+        role: { $ref: "#/components/schemas/Role" }
+        map: { anyOf: [{ $ref: "#/components/schemas/MapSummary" }, { type: "null" }] }
+        items: { type: array, items: { $ref: "#/components/schemas/MapItem" } }
+        own_station_id: { type: [integer, "null"] }
     TickInput:
       type: object
       required: [done]

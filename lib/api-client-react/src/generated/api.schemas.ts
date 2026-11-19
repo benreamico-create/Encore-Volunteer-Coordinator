@@ -155,6 +155,7 @@ export type Event = EventInput & ({
   signups_open: boolean;
   auto_task_from_signup: boolean;
   event_day_mode: boolean;
+  map_shared: boolean;
   event_day_notes?: string;
   day_of_contact_text?: string;
   timezone: string;
@@ -489,6 +490,7 @@ export interface NextInput {
   carry_roles: boolean;
   carry_recurring: boolean;
   carry_volunteers: boolean;
+  carry_map: boolean;
   /**
      * @maxItems 30
      * @items.maxLength 1000
@@ -553,6 +555,218 @@ export interface VolunteerPage {
   event: PublicEvent;
   tasks: Task[];
   event_day: boolean;
+  has_map_post: boolean;
+}
+
+export type MapUploadInputContentType = typeof MapUploadInputContentType[keyof typeof MapUploadInputContentType];
+
+
+export const MapUploadInputContentType = {
+  'image/png': 'image/png',
+  'image/jpeg': 'image/jpeg',
+} as const;
+
+export interface MapUploadInput {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 5242880
+     */
+  size: number;
+  contentType: MapUploadInputContentType;
+}
+
+export interface MapUploadResponse {
+  uploadURL: string;
+  objectPath: string;
+}
+
+export type MapSummarySource = typeof MapSummarySource[keyof typeof MapSummarySource];
+
+
+export const MapSummarySource = {
+  blank: 'blank',
+  upload: 'upload',
+} as const;
+
+export interface MapSummary {
+  id: number;
+  event_id: number;
+  source: MapSummarySource;
+  /** @nullable */
+  image_name: string | null;
+  /** @nullable */
+  image_mime: string | null;
+  /** @nullable */
+  image_width: number | null;
+  /** @nullable */
+  image_height: number | null;
+  /** @nullable */
+  image_url: string | null;
+}
+
+export type MapItemInputKind = typeof MapItemInputKind[keyof typeof MapItemInputKind];
+
+
+export const MapItemInputKind = {
+  booth: 'booth',
+  station: 'station',
+  zone: 'zone',
+  stage: 'stage',
+  entrance: 'entrance',
+} as const;
+
+export interface MapItemInput {
+  kind: MapItemInputKind;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  label: string;
+  /**
+     * @minimum 0
+     * @maximum 98
+     */
+  x_pct: number;
+  /**
+     * @minimum 0
+     * @maximum 98
+     */
+  y_pct: number;
+  /**
+     * @minimum 2
+     * @maximum 100
+     */
+  w_pct: number;
+  /**
+     * @minimum 2
+     * @maximum 100
+     */
+  h_pct: number;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  vendor_name?: string | null;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  needs_text?: string | null;
+  /** @nullable */
+  role_id?: number | null;
+}
+
+export type MapItemUpdateKind = typeof MapItemUpdateKind[keyof typeof MapItemUpdateKind];
+
+
+export const MapItemUpdateKind = {
+  booth: 'booth',
+  station: 'station',
+  zone: 'zone',
+  stage: 'stage',
+  entrance: 'entrance',
+} as const;
+
+export interface MapItemUpdate {
+  kind?: MapItemUpdateKind;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  label?: string;
+  /**
+     * @minimum 0
+     * @maximum 98
+     */
+  x_pct?: number;
+  /**
+     * @minimum 0
+     * @maximum 98
+     */
+  y_pct?: number;
+  /**
+     * @minimum 2
+     * @maximum 100
+     */
+  w_pct?: number;
+  /**
+     * @minimum 2
+     * @maximum 100
+     */
+  h_pct?: number;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  vendor_name?: string | null;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  needs_text?: string | null;
+  /** @nullable */
+  role_id?: number | null;
+}
+
+export type MapItem = MapItemInput & ({
+  id: number;
+  map_id: number;
+  /** @nullable */
+  vendor_name: string | null;
+  /** @nullable */
+  needs_text: string | null;
+  /** @nullable */
+  role_id: number | null;
+  sort_order: number;
+});
+
+export type BlueprintMapInputSource = typeof BlueprintMapInputSource[keyof typeof BlueprintMapInputSource];
+
+
+export const BlueprintMapInputSource = {
+  blank: 'blank',
+  upload: 'upload',
+} as const;
+
+export interface BlueprintMapInput {
+  source: BlueprintMapInputSource;
+  /** @maxLength 500 */
+  objectPath?: string;
+  /**
+     * @minimum 1
+     * @maximum 20000
+     */
+  image_width?: number;
+  /**
+     * @minimum 1
+     * @maximum 20000
+     */
+  image_height?: number;
+}
+
+export interface BlueprintMap {
+  map: MapSummary | null;
+  items: MapItem[];
+  map_shared: boolean;
+}
+
+export interface MapSharingInput {
+  map_shared: boolean;
+}
+
+export interface VolunteerMap {
+  available: boolean;
+  event: PublicEvent;
+  role: Role;
+  map: MapSummary | null;
+  items: MapItem[];
+  /** @nullable */
+  own_station_id: number | null;
 }
 
 export interface TickInput {

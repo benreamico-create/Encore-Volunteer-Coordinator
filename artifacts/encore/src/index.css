@@ -538,3 +538,120 @@ textarea.field { height: auto; padding: 12px 14px; line-height: 1.5; resize: ver
 .skel { position: relative; overflow: hidden; background: rgba(55,68,46,0.08); border-radius: 10px; }
 .skel::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); animation: shimmer 1.4s infinite; }
 @media (prefers-reduced-motion: reduce) { .rise, .twinkle, .skel::after { animation: none; } }
+
+/* Blueprint canvas: venue-plan drafting surface */
+.blueprint-viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(55,68,46,0.18);
+  border-radius: 13px;
+  background: #FBF8EC;
+  touch-action: none;
+}
+.blueprint-stage {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  transform-origin: center center;
+  background-color: #FBF8EC;
+  background-image:
+    linear-gradient(rgba(55,68,46,0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(55,68,46,0.09) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: center;
+  user-select: none;
+  touch-action: none;
+}
+.blueprint-stage:focus-visible { outline: 2px solid var(--forest); outline-offset: -3px; }
+.map-grid-hint {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(251,248,236,0.82);
+  color: #586050;
+  font: 10px 'DM Mono', monospace;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.blueprint-item {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 6px;
+  border-radius: 6px;
+  overflow: visible;
+  cursor: grab;
+  font: 600 clamp(8px, 1.1vw, 12px) 'DM Mono', monospace;
+  line-height: 1.15;
+  text-align: center;
+  color: #2A3622;
+  border: 1.5px solid #37442E;
+  background: rgba(200,217,143,0.75);
+  touch-action: none;
+}
+.blueprint-item:active { cursor: grabbing; }
+.map-booth.is-empty-booth { background: rgba(255,255,255,0.62); border: 1.5px dashed rgba(55,68,46,0.48); }
+.map-station { border-radius: 999px; color: #3A3200; background: rgba(240,214,120,0.92); border-color: #C9A84C; font-family: 'Figtree', sans-serif; font-weight: 700; }
+.map-zone { justify-content: flex-start; align-items: flex-start; border: 1.5px dashed #6C7F45; background: rgba(200,217,143,0.25); color: #37442E; font-size: clamp(7px, .9vw, 10px); letter-spacing: .08em; text-transform: uppercase; }
+.map-stage { background: #2A3622; color: #FEFCF0; border-color: #2A3622; text-transform: uppercase; letter-spacing: .09em; }
+.map-entrance { border-radius: 3px; background: #37442E; color: #FEFCF0; border-color: #37442E; text-transform: uppercase; letter-spacing: .1em; }
+.blueprint-item.is-selected { z-index: 5; outline: 2px solid #C9A84C; outline-offset: 2px; }
+.map-resize-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  right: -7px;
+  bottom: -7px;
+  border: 1px solid #37442E;
+  border-radius: 2px;
+  background: #fff;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.tool-choice {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid rgba(31,30,29,.13);
+  border-radius: 11px;
+  background: rgba(255,255,255,.64);
+  color: #37442E;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+.tool-choice:hover { background: rgba(255,255,255,.95); }
+.tool-choice.is-active { background: #37442E; border-color: #37442E; color: #FEFCF0; }
+.volunteer-map-viewport { touch-action: pan-x pan-y; }
+.volunteer-map-stage { overflow: visible; }
+.volunteer-map-item { pointer-events: none; transition: opacity .18s; }
+.volunteer-map-item.is-dimmed { opacity: .4; }
+.volunteer-map-item.is-own-post { z-index: 4; opacity: 1; outline: 3px solid #C9A84C; outline-offset: 3px; box-shadow: 0 0 0 7px rgba(201,168,76,.23); }
+.your-post-pill {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #2A3622;
+  color: #FEFCF0;
+  white-space: nowrap;
+  font: 500 9px 'DM Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+@media (max-width: 640px) {
+  .blueprint-viewport { border-radius: 10px; }
+  .blueprint-stage { background-size: 18px 18px; }
+  .blueprint-item { padding: 2px 3px; font-size: 8px; }
+}

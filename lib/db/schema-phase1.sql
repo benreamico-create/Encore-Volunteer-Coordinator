@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS events (
   status text NOT NULL DEFAULT 'planning' CHECK(status IN ('planning','upcoming','done')),
   signup_slug text NOT NULL UNIQUE, signups_open boolean NOT NULL DEFAULT true,
   auto_task_from_signup boolean NOT NULL DEFAULT true, event_day_mode boolean NOT NULL DEFAULT false,
+  map_shared boolean NOT NULL DEFAULT false,
   event_day_notes text NOT NULL DEFAULT '', day_of_contact_text text NOT NULL DEFAULT '',
   plan_accepted boolean NOT NULL DEFAULT false, carried_lesson text NOT NULL DEFAULT '', carried_didnt text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now(),
