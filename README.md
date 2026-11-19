@@ -28,8 +28,9 @@ The frontend runs at `/`; API requests use `/api`. All data persists in PostgreS
 | `SESSION_SECRET` | Yes | Signs organizer session cookies. Keep secret. Changing it logs out existing sessions. |
 | `DATABASE_URL` | Managed | Provided by Replit-managed PostgreSQL; server-side only. |
 | `LLM_API_KEY` | No | Optional OpenAI key, read only by the server. Never bundled into the frontend. |
-| `LLM_MODEL` | No | Defaults to `gpt-4o-mini` if paid AI is explicitly enabled. |
-| `AI_ENABLED` | No | Defaults off. Only the literal value `true`, together with `LLM_API_KEY`, enables paid calls. Keep off for no-cost demos. |
+| `CLAUDE_API_KEY` | No | Optional Anthropic key, server-side only. Claude is selected when this is present, including when both keys exist. |
+| `LLM_MODEL` | No | Optional override for the selected provider. Defaults to `claude-haiku-4-5` for Claude, or `gpt-4o-mini` for OpenAI. Use a model belonging to the selected provider. |
+| `AI_ENABLED` | No | Defaults off. Only the literal value `true`, together with a configured provider key, enables paid calls. Keep off for no-cost demos. |
 | `AI_MONTHLY_LIMIT` | No | Default 150 provider attempts per organizer per UTC calendar month. Set to a much smaller number, or 0, for tighter spending control. This is a request count, not a dollar cap. |
 | `RESEND_API_KEY` | No | Reserved for P1 email sending; not used by the P0 implementation. |
 | `EMAIL_FROM` | No | Reserved for P1; must be an address on a domain you own and verify with Resend. |
@@ -40,7 +41,7 @@ Never paste credentials into chat, source code, screenshots or README files.
 
 The plan drafter, helper and next-event starter use editable, explicitly accepted templates when paid AI is disabled, missing, capped, times out, or returns invalid output. The exact PRD plan template is used. Reminder drafts use the PRD text template. No paid AI calls are made by the self-tests.
 
-The OpenAI wrapper has a 30-second total deadline, validates JSON, and retries invalid JSON once. Each provider attempt is counted atomically before it starts. Provider and network failures do not get automatic retries. There is no automatic application of AI results.
+The Claude/OpenAI wrapper has a 30-second total deadline, validates JSON, and retries invalid JSON once. Each provider attempt is counted atomically before it starts. Provider and network failures do not get automatic retries. Output is limited to 1,800 tokens per attempt to conserve the API balance. There is no automatic application of AI results. Adding a key does not enable paid calls. Adapter tests use fake keys and mocked responses, never paid requests.
 
 Email sending is off in this P0 build. Reminders can be copied or opened in the organizer's email app. Each personalized draft includes only that volunteer's private link. The general draft intentionally contains no private links; do not paste multiple volunteers' private links into a shared message.
 
@@ -85,7 +86,7 @@ Initial verification passed all four API phase checks and the full project typec
 1. **Source precedence:** supplied original screen assets/HTML govern appearance; the PRD governs behavior. Exact Young Serif, Figtree and DM Mono fonts and the supplied Echo logo are used.
 2. **Custom organizer auth is intentional:** the PRD explicitly requires email/password with hashed storage and a session cookie. Passwords use Node's scrypt with a random salt. Sessions live in PostgreSQL; cookies are HttpOnly and SameSite=Lax, and Secure in production. Organizer writes require a session-bound CSRF token.
 3. **No volunteer accounts:** public slugs include a random suffix. Private volunteer links use 192-bit cryptographic random tokens. They cannot read other volunteers or update unassigned/other volunteers' tasks.
-4. **Protect the API balance:** paid AI is opt-in using `AI_ENABLED=true`. Development and tests stay in template mode. OpenAI is the single provider behind the small wrapper; other providers are not silently assumed compatible.
+4. **Protect the API balance:** paid AI is opt-in using `AI_ENABLED=true`. Development and integration tests stay in template mode. The user supplied a Claude key after the initial build, so the wrapper supports Anthropic directly and retains the existing OpenAI adapter. Claude takes precedence when both keys exist. The model defaults to the economical Haiku rather than a larger model.
 5. **Conflicting template task counts:** the exact PRD 10.4 fallback has 17 tasks, although 10.1 constrains model output to 8–16. The exact fallback template takes precedence for template mode; paid model output is constrained to 8–16.
 6. **Acceptance and capacity are atomic:** accepting a plan twice does not duplicate work. Signup and role-capacity edits lock the event row in a database transaction to prevent overbooking across Autoscale instances.
 7. **Carry-over is selected, not automatic:** lessons/notes, use-again resources, roles, recurring tasks and willing volunteers each have a choice. Volunteers retain their role, so roles must also be selected when carrying volunteers. New private tokens are generated; emails carry only with both ask-again and email consent. New event checklists are not pre-completed.

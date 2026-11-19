@@ -19,3 +19,9 @@ Keep paid AI off unless deliberately enabled. The user has a small API balance a
 **Why:** The user said, “i have 1 dollor here on my api key but for now i want you to be conservative iwth it.”
 
 **How to apply:** Use no-cost templates for development and self-tests. Keep server-side calls bounded and usage-counted when enabled.
+
+Use the user's own Anthropic account for Claude rather than switching them to Replit-billed AI access.
+
+**Why:** The user supplied a Claude API key for Encore after the original OpenAI-only implementation. Their small provider balance and conservative-spending instruction still apply.
+
+**How to apply:** Keep provider credentials server-side and never treat adding or replacing a key as permission to enable paid calls. Use mocked provider responses for development verification.
