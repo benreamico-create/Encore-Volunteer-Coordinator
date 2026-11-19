@@ -144,18 +144,18 @@ function TaskCard({ b, t, index, colLen, onMove, onReorder, onEdit, onAssign, on
   return (
     <article
       ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }}
-      className="glass !p-3.5"
+      className={`glass !p-3.5 transition-shadow ${isDragging ? "shadow-xl" : ""}`}
       data-testid={`card-task-${t.id}`}
     >
       <div className="flex items-start gap-2">
         <button ref={setActivatorNodeRef} type="button" {...attributes} {...listeners}
-          className="shrink-0 w-7 h-9 -ml-1 -mt-1 inline-flex items-center justify-center rounded-lg text-muted-ink hover:bg-black/5 cursor-grab active:cursor-grabbing touch-none"
+          className="flex-1 min-w-0 -ml-1 -mt-1 p-1.5 rounded-lg flex items-start gap-2 text-left text-[15px] font-semibold leading-snug text-[#23291E] hover:bg-black/[0.035] cursor-grab active:cursor-grabbing touch-none disabled:cursor-not-allowed"
           aria-label={`Drag task: ${t.title}`} disabled={busy} data-testid={`drag-task-${t.id}`}>
-          <svg width="16" height="20" viewBox="0 0 16 20" fill="currentColor" aria-hidden="true">
+          <svg className="shrink-0 mt-0.5 text-muted-ink" width="14" height="18" viewBox="0 0 16 20" fill="currentColor" aria-hidden="true">
             {[5, 10, 15].flatMap(y => [5, 11].map(x => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.5" />))}
           </svg>
+          <span className={`min-w-0 ${done ? "line-through text-muted-ink" : ""}`} data-testid={`text-task-title-${t.id}`}>{t.title}<span className="sr-only">. Drag to move between task columns.</span></span>
         </button>
-        <div className={`flex-1 min-w-0 text-[15px] font-semibold leading-snug ${done ? "line-through text-muted-ink" : ""}`} data-testid={`text-task-title-${t.id}`}>{t.title}</div>
         <DropdownMenu>
           <DropdownMenuTrigger disabled={busy} className="w-9 h-9 -mr-1.5 -mt-1.5 shrink-0 rounded-full inline-flex items-center justify-center text-muted-ink hover:bg-black/5" aria-label={`Actions for ${t.title}`} data-testid={`button-task-menu-${t.id}`}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
@@ -403,7 +403,7 @@ export default function TasksPage() {
         actions={<button className="btn btn-primary" onClick={() => setDialog({ task: null, status: "todo" })} data-testid="button-new-task"><Icon name="plus" size={16} /> New task</button>}
       />
       <p className="text-[13px] text-muted-ink mb-4" role="status">
-        {moving ? "Saving task position…" : "Drag a task using its ⋮⋮ handle, or choose a status on the card. On a phone, hold the handle and drag to a tab."}
+        {dragId !== null ? `Moving “${b.tasks.find(t => t.id === dragId)?.title ?? "task"}”. Drop it into a highlighted column.` : moving ? "Saving task position…" : "Drag a task by its title into another column, or choose a status on the card. On a phone, hold the title and drag it to a tab."}
       </p>
       <DndContext sensors={sensors} collisionDetection={boardCollision} onDragStart={({ active }) => { setDragId(Number(active.id)); void qc.cancelQueries({ queryKey: key }); }}
         onDragOver={({ over }) => { const status = over?.data.current?.status as TaskStatus | undefined; if (status && window.matchMedia("(max-width: 899px)").matches) setMobileCol(status); }}
@@ -417,7 +417,7 @@ export default function TasksPage() {
       <div className="grid min-[1200px]:grid-cols-[1fr_300px] gap-5 items-start">
         <div className="grid min-[900px]:grid-cols-3 gap-4">
           {COLS.map((c) => (
-            <TaskColumn key={c.id} status={c.id} label={c.label} active={mobileCol === c.id}>
+            <TaskColumn key={c.id} status={c.id} label={c.label} active={mobileCol === c.id} dragging={dragId !== null}>
               <div className="flex items-center justify-between px-1">
                 <h2 className="font-display text-[18px]">{c.label}</h2>
                 <span className="font-mono-ui text-[12px] text-muted-ink">{columns[c.id].length}</span>
