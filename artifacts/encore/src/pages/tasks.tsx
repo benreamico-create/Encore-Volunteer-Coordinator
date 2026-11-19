@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent, type KeyboardEventHandler, type MouseEventHandler, type TouchEventHandler } from "react";
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, KeyboardSensor, useSensor, useSensors, closestCorners, pointerWithin, type DragEndEvent, type CollisionDetection } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -141,14 +141,20 @@ function TaskCard({ b, t, index, colLen, onMove, onReorder, onEdit, onAssign, on
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: t.id, data: { status: t.status }, disabled: busy,
   });
+  // Mouse can start a drag anywhere on the card body. Touch stays on the
+  // visible handle so swiping over a card can still scroll the page normally.
+  const onMouseDown = listeners?.onMouseDown as unknown as MouseEventHandler<HTMLElement> | undefined;
+  const onTouchStart = listeners?.onTouchStart as unknown as TouchEventHandler<HTMLButtonElement> | undefined;
+  const onKeyDown = listeners?.onKeyDown as unknown as KeyboardEventHandler<HTMLButtonElement> | undefined;
   return (
     <article
-      ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }}
-      className={`glass !p-3.5 transition-shadow ${isDragging ? "shadow-xl" : ""}`}
+      ref={setNodeRef} onMouseDown={onMouseDown}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }}
+      className={`glass !p-3.5 cursor-grab active:cursor-grabbing transition-shadow ${isDragging ? "shadow-xl" : ""}`}
       data-testid={`card-task-${t.id}`}
     >
       <div className="flex items-start gap-2">
-        <button ref={setActivatorNodeRef} type="button" {...attributes} {...listeners}
+        <button ref={setActivatorNodeRef} type="button" {...attributes} onTouchStart={onTouchStart} onKeyDown={onKeyDown}
           className="flex-1 min-w-0 -ml-1 -mt-1 p-1.5 rounded-lg flex items-start gap-2 text-left text-[15px] font-semibold leading-snug text-[#23291E] hover:bg-black/[0.035] cursor-grab active:cursor-grabbing touch-none disabled:cursor-not-allowed"
           aria-label={`Drag task: ${t.title}`} disabled={busy} data-testid={`drag-task-${t.id}`}>
           <svg className="shrink-0 mt-0.5 text-muted-ink" width="14" height="18" viewBox="0 0 16 20" fill="currentColor" aria-hidden="true">
@@ -157,7 +163,7 @@ function TaskCard({ b, t, index, colLen, onMove, onReorder, onEdit, onAssign, on
           <span className={`min-w-0 ${done ? "line-through text-muted-ink" : ""}`} data-testid={`text-task-title-${t.id}`}>{t.title}<span className="sr-only">. Drag to move between task columns.</span></span>
         </button>
         <DropdownMenu>
-          <DropdownMenuTrigger disabled={busy} className="w-9 h-9 -mr-1.5 -mt-1.5 shrink-0 rounded-full inline-flex items-center justify-center text-muted-ink hover:bg-black/5" aria-label={`Actions for ${t.title}`} data-testid={`button-task-menu-${t.id}`}>
+          <DropdownMenuTrigger disabled={busy} onMouseDown={e => e.stopPropagation()} className="w-9 h-9 -mr-1.5 -mt-1.5 shrink-0 rounded-full inline-flex items-center justify-center text-muted-ink hover:bg-black/5" aria-label={`Actions for ${t.title}`} data-testid={`button-task-menu-${t.id}`}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 rounded-xl" style={{ background: "#FEFCF0" }}>
@@ -198,7 +204,7 @@ function TaskCard({ b, t, index, colLen, onMove, onReorder, onEdit, onAssign, on
           <span className="flex items-center gap-1.5 min-w-0"><Avatar name={who} size={26} /><span className="text-[13px] truncate" style={{ color: "#3D3D3A" }}>{who}</span></span>
         ) : (
           <DropdownMenu>
-            <DropdownMenuTrigger disabled={busy} className="text-[12px] font-semibold rounded-full px-2.5 py-0.5 hover:bg-white/60" style={{ color: "#37442E", border: "1.5px dashed #37442E" }} data-testid={`button-quick-assign-${t.id}`}>+ Assign</DropdownMenuTrigger>
+            <DropdownMenuTrigger disabled={busy} onMouseDown={e => e.stopPropagation()} className="text-[12px] font-semibold rounded-full px-2.5 py-0.5 hover:bg-white/60" style={{ color: "#37442E", border: "1.5px dashed #37442E" }} data-testid={`button-quick-assign-${t.id}`}>+ Assign</DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="rounded-xl max-h-[300px] overflow-auto" style={{ background: "#FEFCF0" }}>
               {b.organizers.map((o) => <DropdownMenuItem key={`u${o.id}`} onSelect={() => onAssign(`u:${o.id}`)}>{o.name || o.email}</DropdownMenuItem>)}
               {b.volunteers.map((v) => <DropdownMenuItem key={`v${v.id}`} onSelect={() => onAssign(`v:${v.id}`)}>{v.name} <span className="text-muted-ink ml-1 text-[12px]">volunteer</span></DropdownMenuItem>)}
@@ -211,7 +217,7 @@ function TaskCard({ b, t, index, colLen, onMove, onReorder, onEdit, onAssign, on
       <label className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t text-[12px] text-muted-ink" style={{ borderColor: "var(--line)" }}>
         Status
         <select className="rounded-lg py-1.5 pl-2 pr-6 bg-white/70 text-[13px] font-semibold text-[#37442E] max-w-[150px]"
-          value={t.status} disabled={busy} onChange={e => onMove(e.target.value as TaskStatus)}
+          value={t.status} disabled={busy} onMouseDown={e => e.stopPropagation()} onChange={e => onMove(e.target.value as TaskStatus)}
           aria-label={`Status for ${t.title}`} data-testid={`select-task-status-${t.id}`}>
           {COLS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
         </select>
@@ -403,7 +409,7 @@ export default function TasksPage() {
         actions={<button className="btn btn-primary" onClick={() => setDialog({ task: null, status: "todo" })} data-testid="button-new-task"><Icon name="plus" size={16} /> New task</button>}
       />
       <p className="text-[13px] text-muted-ink mb-4" role="status">
-        {dragId !== null ? `Moving “${b.tasks.find(t => t.id === dragId)?.title ?? "task"}”. Drop it into a highlighted column.` : moving ? "Saving task position…" : "Drag a task by its title into another column, or choose a status on the card. On a phone, hold the title and drag it to a tab."}
+        {dragId !== null ? `Moving “${b.tasks.find(t => t.id === dragId)?.title ?? "task"}”. Drop it into a highlighted column.` : moving ? "Saving task position…" : "Drag a task card from its body into another column. On a phone, hold the title and drag it to a tab."}
       </p>
       <DndContext sensors={sensors} collisionDetection={boardCollision} onDragStart={({ active }) => { setDragId(Number(active.id)); void qc.cancelQueries({ queryKey: key }); }}
         onDragOver={({ over }) => { const status = over?.data.current?.status as TaskStatus | undefined; if (status && window.matchMedia("(max-width: 899px)").matches) setMobileCol(status); }}

@@ -51,7 +51,7 @@ Email sending is off in this P0 build. Reminders can be copied or opened in the 
 - `/app` — series switcher, events/progress, fictional demo loader and carried-forward context.
 - `/app/series/:id/events/new` — event details, description and purpose wizard.
 - `/app/events/:id/plan` — editable draft tasks/roles, explicit acceptance, and **Edit event information** for the overview (name, date/time, city/place, guests, budget, description and purpose).
-- `/app/events/:id/tasks` — three-column task board with cards you can drag by their title, highlighted drop columns, keyboard controls, visible per-card Status selectors and Move to menus, assignment and recurring work.
+- `/app/events/:id/tasks` — three-column task board with cards draggable from the whole card body by mouse, highlighted drop columns, keyboard controls, visible per-card Status selectors and Move to menus, assignment and recurring work. On phones, drag from the title handle so normal page scrolling remains easy.
 - `/app/events/:id/volunteers` — role management, link/toggles, volunteers, day-of details and reminder drafts.
 - `/app/events/:id/recap` — typed attendance, show rate, ratings, notes, reusable resources and starter draft.
 - `/app/events/:id/next` — selected-only recap carry-over.
