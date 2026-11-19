@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import { Shell, PageHeader } from "@/components/shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { EventDetailsDialog } from "@/components/event-details-dialog";
 import { ErrorPanel, Icon, Skel, Star } from "@/components/brand";
 import { GROUPS, addDays, clearDraft, errorMessage, errorStatus, fmtDate, fmtShort, fmtTime, offsetLabel, readDraft, sourceChip, stashDraft } from "@/lib/encore";
 import { useEncore } from "@/lib/session";
@@ -23,7 +24,7 @@ function toRows(d: PlanDraft) {
   return { rows, roles };
 }
 
-function Overview({ b }: { b: EventBundle }) {
+function Overview({ b, onEdit }: { b: EventBundle; onEdit: () => void }) {
   const e = b.event;
   const purpose = [["Why this event", e.purpose_why], ["Who it is for", e.purpose_audience], ["What people leave with", e.purpose_takeaway]].filter(([, v]) => v && String(v).trim());
   return (
@@ -49,6 +50,9 @@ function Overview({ b }: { b: EventBundle }) {
           ))}
         </div>
       )}
+      <button type="button" className="btn btn-secondary btn-sm mt-5 w-full" onClick={onEdit} data-testid="button-edit-event-overview">
+        Edit event information
+      </button>
     </section>
   );
 }
@@ -91,6 +95,7 @@ export default function PlanPage() {
   const [roles, setRoles] = useState<RoleRow[]>(initial?.roles ?? []);
   const [notice, setNotice] = useState<string | undefined>(initial?.notice);
   const [confirmRedraft, setConfirmRedraft] = useState(false);
+  const [editEvent, setEditEvent] = useState(false);
 
   const persist = (r: Row[], ro: RoleRow[]) => stashDraft(id, toDraft(r, ro));
   const toDraft = (r: Row[], ro: RoleRow[]): PlanDraft => {
@@ -154,7 +159,9 @@ export default function PlanPage() {
         eyebrow={b.series.name}
         title={rows ? `${ev.name}: draft plan` : ev.name}
         subtitle={rows ? "Step 2 of 2 · Edit, delete or add anything" : ev.plan_accepted ? "Plan accepted. Your tasks and roles are on the board." : "No plan drafted yet."}
-        actions={rows ? (
+        actions={<>
+          <button type="button" className="btn btn-secondary" onClick={() => setEditEvent(true)} data-testid="button-edit-event">Edit event information</button>
+          {rows ? (
           <>
             <button className="btn btn-secondary" onClick={() => setConfirmRedraft(true)} disabled={draftM.isPending || acceptM.isPending} data-testid="button-redraft">{draftM.isPending ? "Drafting" : "Redraft"}</button>
             <button className="btn btn-primary" onClick={accept} disabled={acceptM.isPending || draftM.isPending} data-testid="button-accept-plan"><Icon name="check" size={16} /> {acceptM.isPending ? "Accepting" : "Accept plan"}</button>
@@ -162,6 +169,7 @@ export default function PlanPage() {
         ) : ev.plan_accepted ? (
           <Link href={`/app/events/${id}/tasks`} className="btn btn-primary" data-testid="button-go-tasks">Open task board <Icon name="arrow" size={15} /></Link>
         ) : null}
+        </>}
       />
 
       <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
@@ -255,7 +263,7 @@ export default function PlanPage() {
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-7">
-          <Overview b={b} />
+          <Overview b={b} onEdit={() => setEditEvent(true)} />
           {b.previous && (
             <section className="ai-glass rise" data-testid="panel-previous-lesson">
               <div className="font-mono-ui text-[11px] uppercase tracking-[0.16em] mb-2 flex items-center gap-2" style={{ color: "#5A4A0A" }}><Icon name="loop" size={14} /> Pulled from {b.previous.event.name}</div>
@@ -267,6 +275,7 @@ export default function PlanPage() {
         </aside>
       </div>
 
+      {editEvent && <EventDetailsDialog b={b} onClose={() => setEditEvent(false)} />}
       <ConfirmDialog
         open={confirmRedraft} onOpenChange={setConfirmRedraft}
         title="Replace this draft?" description="Redrafting replaces your edits on this page with a fresh draft. Tasks already on the board are not touched."

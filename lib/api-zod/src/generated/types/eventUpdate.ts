@@ -8,6 +8,33 @@
 import type { EventUpdateStatus } from './eventUpdateStatus';
 
 export interface EventUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name?: string;
+  starts_at?: string;
+  timezone?: string;
+  /** @maxLength 160 */
+  city?: string;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  guests_expected?: number;
+  /** @minimum 0 */
+  budget_amount?: number;
+  /**
+     * @minLength 1
+     * @maxLength 10000
+     */
+  description_raw?: string;
+  /** @maxLength 2000 */
+  purpose_why?: string;
+  /** @maxLength 2000 */
+  purpose_audience?: string;
+  /** @maxLength 2000 */
+  purpose_takeaway?: string;
   signups_open?: boolean;
   auto_task_from_signup?: boolean;
   event_day_mode?: boolean;

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { CreateSeriesBody, ListSeriesResponse, CreateEventBody, GetDashboardResponse, GetEventResponse, UpdateEventBody, AcceptPlanBody, DraftPlanBody } from "@workspace/api-zod";
 import { id, one, rows, transaction, patch, HttpError } from "../lib/store";
 import { userId } from "../lib/security";
-import { bundle, dueFromOffset, eventSummary, insertEvent, ownedEvent, ownedSeries, previousData, recapData, wire } from "../lib/events";
+import { bundle, dueFromOffset, eventSummary, insertEvent, ownedEvent, ownedSeries, previousData, recapData, validDate, validTimezone, wire } from "../lib/events";
 import { draft, planTemplate } from "../lib/ai";
 import { z } from "zod";
 
@@ -38,6 +38,16 @@ router.get("/events/:id",async(req,res)=>{
 router.patch("/events/:id",async(req,res)=>{
   const eid=id(req.params.id); await ownedEvent(userId(req),eid);
   const data=UpdateEventBody.parse(req.body);
+  if (data.name !== undefined) {
+    data.name = data.name.trim();
+    if (!data.name) throw new HttpError(400,"Give the event a name.");
+  }
+  if (data.description_raw !== undefined) {
+    data.description_raw = data.description_raw.trim();
+    if (!data.description_raw) throw new HttpError(400,"Add a description for the event.");
+  }
+  if (data.starts_at !== undefined) data.starts_at = validDate(data.starts_at);
+  if (data.timezone !== undefined) data.timezone = validTimezone(data.timezone);
   await patch("events",eid,data);
   res.json(wire(await eventSummary(eid)));
 });

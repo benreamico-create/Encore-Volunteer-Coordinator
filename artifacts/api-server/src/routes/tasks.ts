@@ -5,6 +5,7 @@ import { HttpError, id, one, patch, required, rows, transaction, type Row } from
 import { bundle, ownedEvent, roleList, wire } from "../lib/events";
 import { draft } from "../lib/ai";
 import { z } from "zod";
+import { isCalendarDate } from "../lib/calendar-date";
 
 const router=Router();
 async function validateAssignee(eid:number,uid:number,data:Row) {
@@ -12,10 +13,15 @@ async function validateAssignee(eid:number,uid:number,data:Row) {
   if (data.assignee_user_id && data.assignee_user_id!==uid) throw new HttpError(400,"That organizer is not part of this series.");
   if (data.assignee_volunteer_id) required(await one("SELECT id FROM volunteers WHERE id=$1 AND event_id=$2 AND status='confirmed'",[data.assignee_volunteer_id,eid]),"Volunteer not found");
   if (data.role_id) required(await one("SELECT id FROM roles WHERE id=$1 AND event_id=$2",[data.role_id,eid]),"Role not found");
-  if (data.due_date && (!/^\d{4}-\d{2}-\d{2}$/.test(data.due_date)|| !Number.isFinite(Date.parse(data.due_date)))) throw new HttpError(400,"Choose a valid due date.");
+}
+function validateDueDate(data: Row) {
+  if (data.due_date !== undefined && data.due_date !== null && !isCalendarDate(data.due_date)) {
+    throw new HttpError(400,"Choose a valid due date (YYYY-MM-DD).");
+  }
 }
 router.post("/events/:id/tasks",async(req,res)=>{
   const uid=userId(req),eid=id(req.params.id),data=CreateTaskBody.parse(req.body); await ownedEvent(uid,eid);
+  validateDueDate(data);
   await validateAssignee(eid,uid,data);
   const max=await one("SELECT coalesce(max(sort_order),0)+1 AS n FROM tasks WHERE event_id=$1",[eid]);
   const task=await one(`INSERT INTO tasks(event_id,title,group_name,status,assignee_user_id,assignee_volunteer_id,role_id,due_date,recurring,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
@@ -24,6 +30,9 @@ router.post("/events/:id/tasks",async(req,res)=>{
 });
 router.patch("/events/:id/tasks/:itemId",async(req,res)=>{
   const uid=userId(req),eid=id(req.params.id),tid=id(req.params.itemId),data=UpdateTaskBody.parse(req.body); await ownedEvent(uid,eid);
+  // Only validate dates supplied in this request. Status/assignment/reordering
+  // must not attempt to parse a driver-returned DATE object as request text.
+  validateDueDate(data);
   const task=required(await one("SELECT * FROM tasks WHERE id=$1 AND event_id=$2",[tid,eid]));
   const combined={...task,...data};
   await validateAssignee(eid,uid,combined);

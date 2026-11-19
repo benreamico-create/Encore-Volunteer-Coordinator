@@ -52,6 +52,22 @@ try {
     });
     await b.call(`/events/${event.id}`,"GET",undefined,404);
     await b.call(`/events/${event.id}`,"PATCH",{status:"done"},404);
+    const editedEvent = await a.call(`/events/${event.id}`,"PATCH",{
+      name:"Fictional Spring Test — edited",starts_at:"2027-03-21T00:30:00Z",
+      city:"Edmonton",place_text:"Fictional room",guests_expected:75,budget_amount:125.50,
+      description_raw:"Updated fictional gathering.",purpose_why:"Meet others",purpose_audience:"New builders",purpose_takeaway:"Two new friends"
+    });
+    assert.equal(editedEvent.name,"Fictional Spring Test — edited");
+    assert.equal(editedEvent.guests_expected,75);
+    assert.equal(editedEvent.budget_amount,125.50);
+    assert.equal(editedEvent.signup_slug,event.signup_slug);
+    await a.call(`/events/${event.id}`,"PATCH",{name:"   "},400);
+    await a.call(`/events/${event.id}`,"PATCH",{starts_at:"not a date"},400);
+    await a.call(`/events/${event.id}`,"PATCH",{timezone:"Not/AZone"},400);
+    await a.call(`/events/${event.id}`,"PATCH",{guests_expected:-1},400);
+    const freshEvent=(await a.call(`/events/${event.id}`)).event;
+    assert.equal(freshEvent.city,"Edmonton");
+    assert.equal(freshEvent.purpose_takeaway,"Two new friends");
     const plan=await a.call("/ai/plan","POST",{event_id:event.id});
     assert.match(plan.notice,/template/);
     const before=await a.call(`/events/${event.id}`); assert.equal(before.tasks.length,0); assert.equal(before.event.purpose_why,"Meet others");
@@ -91,8 +107,19 @@ try {
       const teamTask=await a.call(`/events/${event.id}/tasks`,"POST",{title:"Fictional role checklist task",role_id:role.id});
       assert((await publicClient.call(`/public/v/${joined.token}`)).tasks.some(t=>t.id===teamTask.id));
       await publicClient.call(`/public/v/${joined.token}/tasks/${teamTask.id}`,"PATCH",{done:true});
-      const t=await a.call(`/events/${event.id}/tasks`,"POST",{title:"Fictional editable task",status:"todo",recurring:true,assignee_user_id:signed.user.id});
-      for(const status of ["doing","done","todo"]) await a.call(`/events/${event.id}/tasks/${t.id}`,"PATCH",{status,sort_order:2.5});
+      const t=await a.call(`/events/${event.id}/tasks`,"POST",{title:"Fictional editable task",status:"todo",due_date:"2027-03-17",recurring:true,assignee_user_id:signed.user.id});
+      assert.equal(t.due_date,"2027-03-17");
+      for(const status of ["doing","done","todo"]) {
+        const moved=await a.call(`/events/${event.id}/tasks/${t.id}`,"PATCH",{status,sort_order:2.5});
+        assert.equal(moved.status,status);
+        assert.equal(moved.due_date,"2027-03-17");
+      }
+      await a.call(`/events/${event.id}/tasks/${t.id}`,"PATCH",{due_date:"2027-02-30"},400);
+      await a.call(`/events/${event.id}/tasks/${t.id}`,"PATCH",{due_date:"2027-13-01"},400);
+      assert.equal((await a.call(`/events/${event.id}/tasks/${t.id}`,"PATCH",{due_date:"2028-02-29"})).due_date,"2028-02-29");
+      await a.call(`/events/${event.id}/tasks/${t.id}`,"PATCH",{due_date:null});
+      assert.equal((await a.call(`/events/${event.id}`)).tasks.find(x=>x.id===t.id).due_date,null);
+      await a.call(`/events/${event.id}/tasks/${t.id}`,"PATCH",{due_date:"2027-03-17"});
       await a.call(`/events/${event.id}/tasks/${t.id}`,"PATCH",{assignee_user_id:null,assignee_volunteer_id:volunteer.id});
       assert((await publicClient.call(`/public/v/${joined.token}`)).tasks.some(x=>x.id===t.id));
       await b.call(`/events/${event.id}/tasks/${t.id}`,"PATCH",{status:"done"},404);

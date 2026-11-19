@@ -770,6 +770,23 @@ export const UpdateEventParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const updateEventBodyNameMax = 160;
+
+export const updateEventBodyCityMax = 160;
+
+export const updateEventBodyGuestsExpectedMin = 0;
+export const updateEventBodyGuestsExpectedMax = 100000;
+
+export const updateEventBodyBudgetAmountMin = 0;
+
+export const updateEventBodyDescriptionRawMax = 10000;
+
+export const updateEventBodyPurposeWhyMax = 2000;
+
+export const updateEventBodyPurposeAudienceMax = 2000;
+
+export const updateEventBodyPurposeTakeawayMax = 2000;
+
 export const updateEventBodyEventDayNotesMax = 5000;
 
 export const updateEventBodyDayOfContactTextMax = 500;
@@ -779,6 +796,16 @@ export const updateEventBodyPlaceTextMax = 500;
 
 
 export const UpdateEventBody = zod.object({
+  "name": zod.string().min(1).max(updateEventBodyNameMax).optional(),
+  "starts_at": zod.string().optional(),
+  "timezone": zod.string().optional(),
+  "city": zod.string().max(updateEventBodyCityMax).optional(),
+  "guests_expected": zod.number().int().min(updateEventBodyGuestsExpectedMin).max(updateEventBodyGuestsExpectedMax).optional(),
+  "budget_amount": zod.number().min(updateEventBodyBudgetAmountMin).optional(),
+  "description_raw": zod.string().min(1).max(updateEventBodyDescriptionRawMax).optional(),
+  "purpose_why": zod.string().max(updateEventBodyPurposeWhyMax).optional(),
+  "purpose_audience": zod.string().max(updateEventBodyPurposeAudienceMax).optional(),
+  "purpose_takeaway": zod.string().max(updateEventBodyPurposeTakeawayMax).optional(),
   "signups_open": zod.boolean().optional(),
   "auto_task_from_signup": zod.boolean().optional(),
   "event_day_mode": zod.boolean().optional(),

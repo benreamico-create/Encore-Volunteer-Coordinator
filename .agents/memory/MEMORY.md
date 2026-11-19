@@ -1,1 +1,2 @@
 - [Encore build rules](encore-build-rules.md) — supplied designs govern look, PRD governs behavior; P0 phase gates and conservative paid-AI use.
+- [Dated task regressions](dated-task-regressions.md) — task movement tests must include persisted due dates; undated CRUD checks missed the real failure.

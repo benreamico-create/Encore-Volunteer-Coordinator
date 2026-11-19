@@ -50,8 +50,8 @@ Email sending is off in this P0 build. Reminders can be copied or opened in the 
 - `/` — organizer signup/login and logout through the app shell.
 - `/app` — series switcher, events/progress, fictional demo loader and carried-forward context.
 - `/app/series/:id/events/new` — event details, description and purpose wizard.
-- `/app/events/:id/plan` — editable draft tasks/roles, explicit acceptance and event overview.
-- `/app/events/:id/tasks` — three-column task board, drag/reorder and Move to menus, assignment and recurring work.
+- `/app/events/:id/plan` — editable draft tasks/roles, explicit acceptance, and **Edit event information** for the overview (name, date/time, city/place, guests, budget, description and purpose).
+- `/app/events/:id/tasks` — three-column task board with mouse/touch drag handles, keyboard controls, visible per-card Status selectors and Move to menus, assignment and recurring work.
 - `/app/events/:id/volunteers` — role management, link/toggles, volunteers, day-of details and reminder drafts.
 - `/app/events/:id/recap` — typed attendance, show rate, ratings, notes, reusable resources and starter draft.
 - `/app/events/:id/next` — selected-only recap carry-over.
@@ -71,7 +71,8 @@ The API self-test runs phase checks in order and deletes its own randomized fict
 
 - Signup, logout, login, wrong passwords, hashing, independent sessions and CSRF rejection.
 - Organizer isolation, event validation/purpose fields, draft edits/deletion, explicit/idempotent acceptance and progress counts.
-- Task/role create-edit-delete, status and ordering changes, organizer/volunteer assignment.
+- Task/role create-edit-delete, status and ordering changes on tasks with persisted due dates, organizer/volunteer assignment; real calendar-date validation including leap years and clearing a date.
+- Event overview editing and persistence, invalid fields, cross-organizer protection, and stable public signup links.
 - Public signup, honeypot, simultaneous capacity submissions, closed/full roles, email consent and private-token isolation.
 - Event-day mode and checklist-to-board sync; volunteer removal and automatic task cleanup.
 - Recap persistence, computed show rate, template starter, selected carry-over, fresh volunteer tokens and ask-again/email consent rules.
@@ -80,6 +81,8 @@ The API self-test runs phase checks in order and deletes its own randomized fict
 These are API integration checks, not an end-to-end browser certification. The complete PRD 0.6 browser checklist (including drag/touch interactions and every authenticated screen at both 375px and 1280px) remains the release gate before P1. Do not treat a typecheck as proof of those interactions.
 
 Initial verification passed all four API phase checks and the full project typecheck. Screenshots confirmed signup/login at 1280px and 375px, volunteer signup at 375px and 1280px (including a full role), and volunteer confirmation/event-day views at 375px. Temporary visual-test data was removed afterwards. No paid model calls or emails were sent.
+
+Event-editor/task-board regression verification also passed all four API phases, the full typecheck and the frontend production build. A signed-in browser pass at 1280px verified event editing, save/cancel, reload persistence, pointer-dragging dated tasks through all three columns, same-column reordering and the Status selector. At 375px it verified the scrollable editor, accessible save/cancel controls, status changes and no horizontal overflow. Touch-hold dragging was not exercised because the test browser lacks touch emulation; this is not a claim that the entire PRD 0.6 release gate has passed.
 
 ## Decisions
 
@@ -90,7 +93,7 @@ Initial verification passed all four API phase checks and the full project typec
 5. **Conflicting template task counts:** the exact PRD 10.4 fallback has 17 tasks, although 10.1 constrains model output to 8–16. The exact fallback template takes precedence for template mode; paid model output is constrained to 8–16.
 6. **Acceptance and capacity are atomic:** accepting a plan twice does not duplicate work. Signup and role-capacity edits lock the event row in a database transaction to prevent overbooking across Autoscale instances.
 7. **Carry-over is selected, not automatic:** lessons/notes, use-again resources, roles, recurring tasks and willing volunteers each have a choice. Volunteers retain their role, so roles must also be selected when carrying volunteers. New private tokens are generated; emails carry only with both ask-again and email consent. New event checklists are not pre-completed.
-8. **Dates:** default America/Edmonton and CAD. Event instants are stored in UTC; task due dates are calendar dates. Task due offsets and event-day switching use the event's timezone, not the browser's timezone.
+8. **Dates:** default America/Edmonton and CAD. Event instants are stored in UTC; task due dates remain `YYYY-MM-DD` calendar strings, including when read from PostgreSQL. Task due offsets and event-day switching use the event's timezone, not the browser's timezone. Editing an event preserves its tasks, signups, public/private links and existing due dates; the editor explains that rescheduling does not silently shift deadlines or redraft the plan.
 9. **Attendance is typed and aggregate-only:** no attendee records are collected. A zero registered count has no computable show rate.
 10. **Safe reminder sharing:** a general draft can be shared with a group; individualized drafts must be sent separately so private tokens stay private.
 11. **Scope gate:** P0 is the initial build. P1 remains deferred until the complete P0 release checklist passes. The supplied flow-map HTML is documentation only, not an app screen.

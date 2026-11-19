@@ -460,6 +460,16 @@ components:
     EventUpdate:
       type: object
       properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        starts_at: { type: string }
+        timezone: { type: string }
+        city: { type: string, maxLength: 160 }
+        guests_expected: { type: integer, minimum: 0, maximum: 100000 }
+        budget_amount: { type: number, minimum: 0 }
+        description_raw: { type: string, minLength: 1, maxLength: 10000 }
+        purpose_why: { type: string, maxLength: 2000 }
+        purpose_audience: { type: string, maxLength: 2000 }
+        purpose_takeaway: { type: string, maxLength: 2000 }
         signups_open: { type: boolean }
         auto_task_from_signup: { type: boolean }
         event_day_mode: { type: boolean }
