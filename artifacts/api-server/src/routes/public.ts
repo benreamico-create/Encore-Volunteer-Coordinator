@@ -50,7 +50,15 @@ router.get("/public/v/:token",async(req,res)=>{
      WHERE e.id=$1 AND e.map_shared=true AND i.kind='station' AND i.role_id=$2 LIMIT 1`,
     [event.id, role.id],
   ));
-  res.json(GetVolunteerPageResponse.parse(wire({name:v.name,status:v.status,role,event:publicEvent(event,true),tasks:safeTasks,event_day:event.event_day_mode||today===eventDate,has_map_post:hasMapPost})));
+  const announcement = await one(
+    "SELECT id,body,created_at FROM announcements WHERE event_id=$1 ORDER BY id DESC LIMIT 1",
+    [event.id],
+  );
+  res.json(GetVolunteerPageResponse.parse(wire({
+    name:v.name,status:v.status,role,event:publicEvent(event,true),tasks:safeTasks,
+    event_day:event.event_day_mode||today===eventDate,has_map_post:hasMapPost,
+    announcement:announcement ?? null,
+  })));
 });
 router.patch("/public/v/:token/tasks/:itemId",async(req,res)=>{
   await rateLimit(req,"public-tick",500);

@@ -1,15 +1,20 @@
 import { useState, useRef, type TouchEvent as ReactTouchEvent } from "react";
 import { useParams, Link } from "wouter";
-import { useGetVolunteerMap, getGetVolunteerMapQueryKey } from "@workspace/api-client-react";
+import { useGetVolunteerMap, getGetVolunteerMapQueryKey, type PublicAnnouncement } from "@workspace/api-client-react";
 import { PublicFrame, PublicMessage } from "@/components/public-frame";
 import { Icon, Skel } from "@/components/brand";
-import { errorMessage, fmtDate, fmtTime } from "@/lib/encore";
+import { errorMessage, fmtDate, fmtInTz, fmtTime } from "@/lib/encore";
 
 const clamp = (n: number) => Math.max(60, Math.min(220, n));
 
+function LatestAnnouncement({ announcement, timezone }: { announcement: PublicAnnouncement | null; timezone: string }) {
+  if (!announcement) return null;
+  return <section className="ai-glass mb-4 rise" data-testid="panel-latest-announcement"><div className="mono-label mb-2">Latest from the organizers</div><p className="text-[15px] whitespace-pre-wrap" data-testid="text-latest-announcement">{announcement.body}</p><p className="text-[12px] mt-3 opacity-75" data-testid="text-announcement-date">{fmtInTz(announcement.created_at, timezone, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</p></section>;
+}
+
 export default function VolunteerMapPage() {
   const { token = "" } = useParams<{ token: string }>();
-  const q = useGetVolunteerMap(token, { query: { enabled: !!token, queryKey: getGetVolunteerMapQueryKey(token), retry: false } });
+  const q = useGetVolunteerMap(token, { query: { enabled: !!token, queryKey: getGetVolunteerMapQueryKey(token), retry: false, refetchInterval: 5000, refetchIntervalInBackground: false } });
   const [zoom, setZoom] = useState(100);
   const distance = useRef<number | null>(null);
   const touchStart = (e: ReactTouchEvent<HTMLDivElement>) => {
@@ -26,10 +31,11 @@ export default function VolunteerMapPage() {
   if (q.isError || !q.data) return <PublicFrame label="Your post"><PublicMessage title="The map is unavailable" body={errorMessage(q.error, "This map could not be opened. Go back to your shift and contact the organizers if you still need help.")} /><Link href={`/v/${token}`} className="btn btn-secondary w-full mt-4" data-testid="link-back-shift"><Icon name="arrow" size={15} className="rotate-180" /> Back to my shift</Link></PublicFrame>;
   const data = q.data;
   const own = data.items.find((item) => item.id === data.own_station_id);
-  if (!data.available || !data.map || !own) return <PublicFrame label="Your post"><PublicMessage title="Your map is not ready yet" body="The organizers have not shared a map with your post on it. Check back with them for where to meet." /><Link href={`/v/${token}`} className="btn btn-secondary w-full mt-4" data-testid="link-back-shift"><Icon name="arrow" size={15} className="rotate-180" /> Back to my shift</Link></PublicFrame>;
+  if (!data.available || !data.map || !own) return <PublicFrame label="Your post"><LatestAnnouncement announcement={data.announcement} timezone={data.event.timezone} /><PublicMessage title="Your map is not ready yet" body="The organizers have not shared a map with your post on it. Check back with them for where to meet." /><Link href={`/v/${token}`} className="btn btn-secondary w-full mt-4" data-testid="link-back-shift"><Icon name="arrow" size={15} className="rotate-180" /> Back to my shift</Link></PublicFrame>;
   const ratio = data.map.image_width && data.map.image_height ? data.map.image_width / data.map.image_height : 1.45;
   return (
     <PublicFrame label="Your post">
+      <LatestAnnouncement announcement={data.announcement} timezone={data.event.timezone} />
       <Link href={`/v/${token}`} className="inline-flex items-center gap-2 text-[13px] font-semibold text-muted-ink mb-4" data-testid="link-back-shift"><Icon name="arrow" size={15} className="rotate-180" /> Back to my shift</Link>
       <div className="mono-label mb-1">Your post</div>
       <h1 className="font-display text-[32px] leading-tight rise" data-testid="text-own-station">{data.role.name}</h1>

@@ -268,6 +268,58 @@ try {
         assert.equal(sb.roles.length,4); assert.equal(sb.volunteers.length,6); assert.equal(sb.tasks.length,8); assert.equal(sb.tasks.filter(t=>t.source==="signup").length,2);
         assert(sb.tasks.some(t=>t.source_note&&t.source==="ai_plan"));
         console.log("PASS Phase 3: recap persistence/show-rate, editable starter, selected-only carry-over and consent, fresh private tokens, reminders without email, idempotent fictional demo");
+      if (phase >= 4) {
+        const secondBrowser=new Client();
+        await secondBrowser.call("/auth/me");
+        await secondBrowser.call("/auth/login","POST",{email,password});
+        await b.call(`/events/${event.id}/messages`,"GET",undefined,404);
+        await publicClient.call(`/events/${event.id}/messages`,"GET",undefined,401);
+        await publicClient.call(`/events/${event.id}/messages`,"POST",{body:"Volunteer cannot post"},403);
+        await a.call(`/events/${event.id}/messages`,"POST",{body:"   "},400);
+        await a.call(`/events/${event.id}/messages`,"POST",{body:"x".repeat(2001)},400);
+        const firstMessage=await a.call(`/events/${event.id}/messages`,"POST",{body:"Fictional organizer message one"},201);
+        assert.equal(firstMessage.user_id,signed.user.id);
+        assert.equal(firstMessage.user_name,"Fictional Tester");
+        const firstRead=await secondBrowser.call(`/events/${event.id}/messages?after=0`);
+        assert(firstRead.some(message=>message.id===firstMessage.id));
+        const secondMessage=await secondBrowser.call(`/events/${event.id}/messages`,"POST",{body:"Fictional organizer message two"},201);
+        const incremental=await a.call(`/events/${event.id}/messages?after=${firstMessage.id}`);
+        assert(incremental.some(message=>message.id===secondMessage.id));
+        const deletedMessage=await a.call(`/events/${event.id}/messages/${firstMessage.id}`,"DELETE");
+        assert(deletedMessage.deleted_at); assert.equal(deletedMessage.body,"");
+        const deletionUpdate=await secondBrowser.call(`/events/${event.id}/messages?after=${firstMessage.id}`);
+        assert(deletionUpdate.some(message=>message.id===firstMessage.id&&message.deleted_at&&message.body===""));
+        await b.call(`/events/${event.id}/messages/${firstMessage.id}`,"DELETE",undefined,404);
+
+        await b.call(`/events/${event.id}/announcements`,"GET",undefined,404);
+        await publicClient.call(`/events/${event.id}/announcements`,"GET",undefined,401);
+        await publicClient.call(`/events/${event.id}/announcements`,"POST",{body:"Volunteer cannot announce"},403);
+        await a.call(`/events/${event.id}/announcements`,"POST",{body:""},400);
+        await a.call(`/events/${event.id}/announcements`,"POST",{body:"x".repeat(501)},400);
+        await a.call(`/events/${event.id}/announcements`,"POST",{body:"Fictional first update"},201);
+        const latest=await secondBrowser.call(`/events/${event.id}/announcements`);
+        assert.equal(latest.body,"Fictional first update");
+        await secondBrowser.call(`/events/${event.id}/announcements`,"POST",{body:"Fictional latest update"},201);
+        const latestAgain=await a.call(`/events/${event.id}/announcements`);
+        assert.equal(latestAgain.body,"Fictional latest update");
+        assert.equal((await pool.query("SELECT count(*)::int AS n FROM announcements WHERE event_id=$1",[event.id])).rows[0].n,2);
+        const announcementDraft=await a.call("/ai/announcement","POST",{event_id:event.id});
+        assert(announcementDraft.body.length<=500);
+        assert(!announcementDraft.body.includes("/v/"));
+        assert.equal((await pool.query("SELECT count(*)::int AS n FROM announcements WHERE event_id=$1",[event.id])).rows[0].n,2);
+        const privateAnnouncement=await publicClient.call(`/public/v/${willing.token}`);
+        assert.equal(privateAnnouncement.announcement.body,"Fictional latest update");
+        assert.deepEqual(Object.keys(privateAnnouncement.announcement).sort(),["body","created_at","id"]);
+        const volunteerMapPage=await publicClient.call(`/public/v/${willing.token}/map`);
+        assert.equal(volunteerMapPage.announcement.body,"Fictional latest update");
+        assert.deepEqual(Object.keys(volunteerMapPage.announcement).sort(),["body","created_at","id"]);
+        assert(!("messages" in privateAnnouncement));
+        assert(!("user_id" in privateAnnouncement.announcement));
+
+        for(let i=0;i<58;i++) await a.call(`/events/${event.id}/messages`,"POST",{body:`Rate test ${i+1}`},201);
+        await secondBrowser.call(`/events/${event.id}/messages`,"POST",{body:"Cross-session rate limit"},429);
+        console.log("PASS Phase 4: persisted cursor chat and deletion tombstones, owner-only access, user-level rate limit, latest-only private announcements");
+      }
       }
     }
   }

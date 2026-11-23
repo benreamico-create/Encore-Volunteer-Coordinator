@@ -225,8 +225,12 @@ router.get("/public/v/:token/map", async (req, res) => {
     : undefined;
   const available = !!(map && event.map_shared && station);
   const items = available ? await rows("SELECT * FROM map_items WHERE map_id=$1 ORDER BY sort_order,id", [map.id]) : [];
+  const announcement = await one(
+    "SELECT id,body,created_at FROM announcements WHERE event_id=$1 ORDER BY id DESC LIMIT 1",
+    [event.id],
+  );
   const data = {
-    available, event: publicEvent(event, true), role,
+    available, event: publicEvent(event, true), role, announcement: announcement ?? null,
     map: available ? {
       id: map.id, event_id: event.id, source: map.source,
       image_name: map.image_name ?? null, image_mime: map.image_mime ?? null,

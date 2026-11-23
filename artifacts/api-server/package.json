@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "db:setup:dev": "node ./scripts/setup-dev-db.mjs",
-    "self-test": "node ./tests/self-test.mjs 3",
+    "self-test": "node ./tests/self-test.mjs 4",
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",

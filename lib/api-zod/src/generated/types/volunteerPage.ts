@@ -5,6 +5,7 @@
  * Encore organizer and volunteer API
  * OpenAPI spec version: 1.0.0
  */
+import type { PublicAnnouncement } from './publicAnnouncement';
 import type { PublicEvent } from './publicEvent';
 import type { Role } from './role';
 import type { Task } from './task';
@@ -17,4 +18,5 @@ export interface VolunteerPage {
   tasks: Task[];
   event_day: boolean;
   has_map_post: boolean;
+  announcement: PublicAnnouncement | null;
 }

@@ -26,6 +26,10 @@ import type {
 
 import type {
   AiInput,
+  Announcement,
+  AnnouncementDraft,
+  AnnouncementDraftInput,
+  AnnouncementInput,
   AuthInput,
   BlueprintMap,
   BlueprintMapInput,
@@ -37,12 +41,14 @@ import type {
   HealthStatus,
   HelperDraft,
   JoinResult,
+  ListEventMessagesParams,
   MapItem,
   MapItemInput,
   MapItemUpdate,
   MapSharingInput,
   MapUploadInput,
   MapUploadResponse,
+  MessageInput,
   NextInput,
   Ok,
   PlanDraft,
@@ -59,6 +65,7 @@ import type {
   Task,
   TaskInput,
   TaskUpdate,
+  TeamMessage,
   TickInput,
   VolunteerMap,
   VolunteerPage
@@ -1044,6 +1051,529 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getUpdateEventMutationOptions(options), queryClient);
+    }
+
+export const getListEventMessagesUrl = (id: number,
+    params?: ListEventMessagesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/events/${id}/messages?${stringifiedParams}` : `/api/events/${id}/messages`
+}
+
+export const listEventMessages = async (id: number,
+    params?: ListEventMessagesParams, options?: Parameters<typeof customFetch>[1]): Promise<TeamMessage[]> => {
+
+  return customFetch<TeamMessage[]>(getListEventMessagesUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEventMessagesQueryKey = (id: number,
+    params?: ListEventMessagesParams,) => {
+    return [
+    `/api/events/${id}/messages`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListEventMessagesQueryOptions = <TData = Awaited<ReturnType<typeof listEventMessages>>, TError = ErrorType<unknown>>(id: number,
+    params?: ListEventMessagesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listEventMessages>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEventMessagesQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEventMessages>>> = ({ signal }) => listEventMessages(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEventMessages>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListEventMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof listEventMessages>>>
+export type ListEventMessagesQueryError = ErrorType<unknown>
+
+
+export function useListEventMessages<TData = Awaited<ReturnType<typeof listEventMessages>>, TError = ErrorType<unknown>>(
+ id: number,
+    params: undefined |  ListEventMessagesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listEventMessages>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listEventMessages>>,
+          TError,
+          Awaited<ReturnType<typeof listEventMessages>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListEventMessages<TData = Awaited<ReturnType<typeof listEventMessages>>, TError = ErrorType<unknown>>(
+ id: number,
+    params?: ListEventMessagesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listEventMessages>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listEventMessages>>,
+          TError,
+          Awaited<ReturnType<typeof listEventMessages>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListEventMessages<TData = Awaited<ReturnType<typeof listEventMessages>>, TError = ErrorType<unknown>>(
+ id: number,
+    params?: ListEventMessagesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listEventMessages>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListEventMessages<TData = Awaited<ReturnType<typeof listEventMessages>>, TError = ErrorType<unknown>>(
+ id: number,
+    params?: ListEventMessagesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listEventMessages>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListEventMessagesQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateEventMessageUrl = (id: number,) => {
+
+
+
+
+  return `/api/events/${id}/messages`
+}
+
+export const createEventMessage = async (id: number,
+    messageInput: MessageInput, options?: Parameters<typeof customFetch>[1]): Promise<TeamMessage> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TeamMessage>(getCreateEventMessageUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(messageInput)
+  }
+);}
+
+
+
+
+
+export const getCreateEventMessageMutationKey = () => ['createEventMessage'] as const;
+
+export const getCreateEventMessageMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEventMessage>>, TError,CreateEventMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createEventMessage>>, TError,CreateEventMessageMutationVariables, TContext> => {
+
+const mutationKey = getCreateEventMessageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createEventMessage>>, CreateEventMessageMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createEventMessage(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateEventMessageMutationResult = NonNullable<Awaited<ReturnType<typeof createEventMessage>>>
+    export type CreateEventMessageMutationBody = BodyType<MessageInput>
+    export type CreateEventMessageMutationError = ErrorType<unknown>
+    export type CreateEventMessageMutationVariables = {id: number;data: BodyType<MessageInput>}
+
+    export const useCreateEventMessage = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEventMessage>>, TError,CreateEventMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createEventMessage>>,
+        TError,
+        CreateEventMessageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateEventMessageMutationOptions(options), queryClient);
+    }
+
+export const getDeleteEventMessageUrl = (id: number,
+    itemId: number,) => {
+
+
+
+
+  return `/api/events/${id}/messages/${itemId}`
+}
+
+export const deleteEventMessage = async (id: number,
+    itemId: number, options?: Parameters<typeof customFetch>[1]): Promise<TeamMessage> => {
+
+  return customFetch<TeamMessage>(getDeleteEventMessageUrl(id,itemId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteEventMessageMutationKey = () => ['deleteEventMessage'] as const;
+
+export const getDeleteEventMessageMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEventMessage>>, TError,DeleteEventMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteEventMessage>>, TError,DeleteEventMessageMutationVariables, TContext> => {
+
+const mutationKey = getDeleteEventMessageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteEventMessage>>, DeleteEventMessageMutationVariables> = (props) => {
+          const {id,itemId} = props ?? {};
+
+          return  deleteEventMessage(id,itemId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteEventMessageMutationResult = NonNullable<Awaited<ReturnType<typeof deleteEventMessage>>>
+
+    export type DeleteEventMessageMutationError = ErrorType<unknown>
+    export type DeleteEventMessageMutationVariables = {id: number;itemId: number}
+
+    export const useDeleteEventMessage = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEventMessage>>, TError,DeleteEventMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteEventMessage>>,
+        TError,
+        DeleteEventMessageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteEventMessageMutationOptions(options), queryClient);
+    }
+
+export const getGetEventAnnouncementUrl = (id: number,) => {
+
+
+
+
+  return `/api/events/${id}/announcements`
+}
+
+export const getEventAnnouncement = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Announcement | null> => {
+
+  return customFetch<Announcement | null>(getGetEventAnnouncementUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEventAnnouncementQueryKey = (id: number,) => {
+    return [
+    `/api/events/${id}/announcements`
+    ] as const;
+    }
+
+
+export const getGetEventAnnouncementQueryOptions = <TData = Awaited<ReturnType<typeof getEventAnnouncement>>, TError = ErrorType<unknown>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEventAnnouncement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEventAnnouncementQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEventAnnouncement>>> = ({ signal }) => getEventAnnouncement(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEventAnnouncement>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetEventAnnouncementQueryResult = NonNullable<Awaited<ReturnType<typeof getEventAnnouncement>>>
+export type GetEventAnnouncementQueryError = ErrorType<unknown>
+
+
+export function useGetEventAnnouncement<TData = Awaited<ReturnType<typeof getEventAnnouncement>>, TError = ErrorType<unknown>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEventAnnouncement>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEventAnnouncement>>,
+          TError,
+          Awaited<ReturnType<typeof getEventAnnouncement>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEventAnnouncement<TData = Awaited<ReturnType<typeof getEventAnnouncement>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEventAnnouncement>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEventAnnouncement>>,
+          TError,
+          Awaited<ReturnType<typeof getEventAnnouncement>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEventAnnouncement<TData = Awaited<ReturnType<typeof getEventAnnouncement>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEventAnnouncement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetEventAnnouncement<TData = Awaited<ReturnType<typeof getEventAnnouncement>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEventAnnouncement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetEventAnnouncementQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateEventAnnouncementUrl = (id: number,) => {
+
+
+
+
+  return `/api/events/${id}/announcements`
+}
+
+export const createEventAnnouncement = async (id: number,
+    announcementInput: AnnouncementInput, options?: Parameters<typeof customFetch>[1]): Promise<Announcement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Announcement>(getCreateEventAnnouncementUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(announcementInput)
+  }
+);}
+
+
+
+
+
+export const getCreateEventAnnouncementMutationKey = () => ['createEventAnnouncement'] as const;
+
+export const getCreateEventAnnouncementMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEventAnnouncement>>, TError,CreateEventAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createEventAnnouncement>>, TError,CreateEventAnnouncementMutationVariables, TContext> => {
+
+const mutationKey = getCreateEventAnnouncementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createEventAnnouncement>>, CreateEventAnnouncementMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createEventAnnouncement(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateEventAnnouncementMutationResult = NonNullable<Awaited<ReturnType<typeof createEventAnnouncement>>>
+    export type CreateEventAnnouncementMutationBody = BodyType<AnnouncementInput>
+    export type CreateEventAnnouncementMutationError = ErrorType<unknown>
+    export type CreateEventAnnouncementMutationVariables = {id: number;data: BodyType<AnnouncementInput>}
+
+    export const useCreateEventAnnouncement = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEventAnnouncement>>, TError,CreateEventAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createEventAnnouncement>>,
+        TError,
+        CreateEventAnnouncementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateEventAnnouncementMutationOptions(options), queryClient);
+    }
+
+export const getDraftAnnouncementUrl = () => {
+
+
+
+
+  return `/api/ai/announcement`
+}
+
+export const draftAnnouncement = async (announcementDraftInput: AnnouncementDraftInput, options?: Parameters<typeof customFetch>[1]): Promise<AnnouncementDraft> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AnnouncementDraft>(getDraftAnnouncementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(announcementDraftInput)
+  }
+);}
+
+
+
+
+
+export const getDraftAnnouncementMutationKey = () => ['draftAnnouncement'] as const;
+
+export const getDraftAnnouncementMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof draftAnnouncement>>, TError,DraftAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof draftAnnouncement>>, TError,DraftAnnouncementMutationVariables, TContext> => {
+
+const mutationKey = getDraftAnnouncementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof draftAnnouncement>>, DraftAnnouncementMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  draftAnnouncement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DraftAnnouncementMutationResult = NonNullable<Awaited<ReturnType<typeof draftAnnouncement>>>
+    export type DraftAnnouncementMutationBody = BodyType<AnnouncementDraftInput>
+    export type DraftAnnouncementMutationError = ErrorType<unknown>
+    export type DraftAnnouncementMutationVariables = {data: BodyType<AnnouncementDraftInput>}
+
+    export const useDraftAnnouncement = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof draftAnnouncement>>, TError,DraftAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof draftAnnouncement>>,
+        TError,
+        DraftAnnouncementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDraftAnnouncementMutationOptions(options), queryClient);
     }
 
 export const getGetEventMapUrl = (id: number,) => {

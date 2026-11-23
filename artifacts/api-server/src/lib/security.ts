@@ -58,6 +58,14 @@ export async function rateLimit(req: Request, scope: string, limit: number, hour
     RETURNING count`, [key, hours]);
   if (Number(row!.count) > limit) throw new HttpError(429, "Too many attempts. Please try again later.");
 }
+export async function rateLimitByUser(uid: number, scope: string, limit: number, hours = 1) {
+  const key = createHmac("sha256", secret!).update(`user:${uid}:${scope}`).digest("hex");
+  const row = await one(`INSERT INTO request_limits(key,count,resets_at) VALUES($1,1,now()+$2 * interval '1 hour')
+    ON CONFLICT(key) DO UPDATE SET count=CASE WHEN request_limits.resets_at < now() THEN 1 ELSE request_limits.count+1 END,
+    resets_at=CASE WHEN request_limits.resets_at < now() THEN now()+$2 * interval '1 hour' ELSE request_limits.resets_at END
+    RETURNING count`, [key, hours]);
+  if (Number(row!.count) > limit) throw new HttpError(429, "You have sent too many messages. Please try again later.");
+}
 export async function renewSession(req: Request, res: Response, uid: number) {
   await new Promise<void>((resolve, reject) => req.session.regenerate(e => e ? reject(e) : resolve()));
   req.session.userId = uid;

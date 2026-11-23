@@ -13,7 +13,7 @@ Encore is a TypeScript/React/Express/PostgreSQL app for organizing recurring com
    ```sh
    pnpm --filter @workspace/api-server run db:setup:dev
    ```
-   SQL source files live at `lib/db/schema-phase0.sql` through `schema-phase3.sql`. Do not run schema setup in production. Replit Publish manages the production schema diff.
+   SQL source files live at `lib/db/schema-phase0.sql` through `schema-phase5.sql`. Do not run schema setup in production. Replit Publish manages the production schema diff.
 5. Start the existing managed workflows:
    - `artifacts/api-server: API Server`
    - `artifacts/encore: web`
@@ -55,6 +55,7 @@ Email sending is off in this P0 build. Reminders can be copied or opened in the 
 - `/app/events/:id/plan` — editable draft plan and, after acceptance, saved event details, tasks and roles. Date changes offer an explicit due-date shift; role capacity cannot be reduced below sign-ups.
 - `/app/events/:id/tasks` — three-column task board with cards draggable from the whole card body by mouse, highlighted drop columns, keyboard controls, visible per-card Status selectors and Move to menus, assignment and recurring work. On phones, drag from the title handle so normal page scrolling remains easy.
 - `/app/events/:id/volunteers` — role management, link/toggles, volunteers, day-of details and reminder drafts.
+- `/app/events/:id/chat` — persistent organizer-only event chat and one-way volunteer announcements. Chat polls every five seconds, is rate-limited per organizer, and supports deleting your own messages. Volunteer pages receive only the newest announcement; they never receive chat, organizer account details, or other volunteers' private links.
 - `/app/events/:id/wrapup` — notes, reusable resources and next-event starter; old `/app/events/:id/recap` links redirect here. Legacy count and rating columns remain stored, are hidden from this screen, and retain their values when notes are saved.
 - `/app/events/:id/next` — selected-only wrap-up carry-over.
 - `/join/:slug` — public volunteer signup without login.
@@ -80,6 +81,7 @@ The API self-test runs phase checks in order and deletes its own randomized fict
 - Recap persistence, computed show rate, template starter, selected carry-over, fresh volunteer tokens and ask-again/email consent rules.
 - Blueprint map CRUD, percentage bounds, organizer isolation, direct private PNG upload and validation, organizer/linked-volunteer image access, immediate unsharing, cleanup and selected map carry-over.
 - Private reminder drafts with sending off and idempotent fictional demo loading.
+- Organizer chat polling cursors, message-length and ownership checks, soft-delete updates, cross-session persistence and per-user rate limits; announcement length, history/latest replacement, and the private volunteer/map response shape.
 
 These are API integration checks, not an end-to-end browser certification. The complete authenticated-browser checklist (including drag/touch interactions and every authenticated screen at both 375px and 1280px) remains a release gate. Do not treat a typecheck as proof of those interactions.
 
@@ -95,13 +97,19 @@ Tier 1 verification passed `pnpm run typecheck`, all four API self-test phases, 
 
 Blueprint adds an event-specific private venue map, PNG/JPG upload (5 MB maximum) or a blank grid, draggable/resizable booth, station, zone, stage, and entrance items, station-to-role links, map sharing, and a token-scoped volunteer view. Coordinates are percentages, so item placement survives viewport resizing. Map images are stored in private App Storage and served only after the organizer session or a volunteer token with sharing enabled and a linked station is checked. New events can optionally carry map items; sharing starts off, and booth vendor names carry only when the matching vendor resource is marked “use again.”
 
-Apply the additive map schema with `artifacts/api-server/scripts/setup-dev-db.mjs` in development. Production environments must apply `lib/db/schema-phase4.sql` before serving Blueprint routes. Existing event, role, task, and volunteer records are preserved.
+Apply additive development schema updates with `artifacts/api-server/scripts/setup-dev-db.mjs`. Production environments must apply `lib/db/schema-phase4.sql` before serving Blueprint routes and `lib/db/schema-phase5.sql` before serving chat and announcement routes. Existing event, role, task, and volunteer records are preserved.
 
 The following remain outside Tier 2: chat and announcements (Tier 3); P1 map helper hints and resource-to-booth placement; P1 sponsors, email, Google sign-in, and helper drawer. The authenticated desktop/mobile interaction pass remains a separate release check. No paid AI calls or email messages are needed for Blueprint.
 
 Initial verification passed all four API phase checks and the full project typecheck. Screenshots confirmed signup/login at 1280px and 375px, volunteer signup at 375px and 1280px (including a full role), and volunteer confirmation/event-day views at 375px. Temporary visual-test data was removed afterwards. No paid model calls or emails were sent.
 
 Blueprint verification also passed all four API phases, full project typecheck, API server build and Encore production build. The map test exercises a real private App Storage upload/download/delete cycle and confirms organizer and linked-volunteer access, unsharing revocation, map item behavior and carry-forward. The authenticated Blueprint editor itself remains part of the separate desktop/mobile browser release check.
+
+### v2.1 Tier 3 chat and announcements
+
+Chat is available at `/app/events/:id/chat`. Messages are stored per event, limited to 2,000 characters, polled by cursor every five seconds, and soft-deleted so other open chat sessions can show deletion updates. Sending is rate-limited per organizer account. Announcements are stored as history, while only the newest body and timestamp are included in a volunteer's existing private-page and map responses. The public signup and private token-link model is unchanged; volunteers cannot read or post organizer chat or announcements.
+
+The current account model gives each series one owner, so chat access is scoped to that owner. Co-organizer invitations and shared roles remain P1. The announcement drafter uses the existing server-side AI wrapper only when an organizer explicitly selects **Draft one**; it remains an editable, unpublished draft, and the deterministic template works with paid AI disabled.
 
 Event-editor/task-board regression verification also passed all four API phases, the full typecheck and the frontend production build. A signed-in browser pass at 1280px verified event editing, save/cancel, reload persistence, pointer-dragging dated tasks through all three columns, same-column reordering and the Status selector. At 375px it verified the scrollable editor, accessible save/cancel controls, status changes and no horizontal overflow. Touch-hold dragging was not exercised because the test browser lacks touch emulation; this is not a claim that the entire PRD 0.6 release gate has passed.
 
@@ -150,6 +158,6 @@ Publishing requires the user's Publish action. There is no production URL until 
 
 ### Explicitly excluded
 
-No P2, Eventbrite pull, venue/sponsor pipeline or reserved pipeline tables. No ticketing, payments, RSVP, public discovery, inbox/chat, bulk campaigns, native app, billing/subscriptions, calendar sync or scheduled background reminders.
+No P2, Eventbrite pull, venue/sponsor pipeline or reserved pipeline tables. No ticketing, payments, RSVP, public discovery, volunteer chat, bulk campaigns, native app, billing/subscriptions, calendar sync or scheduled background reminders.
 
 Entering a real past event, domain verification, production publishing and choosing the Publishing machine cap are not silently simulated.

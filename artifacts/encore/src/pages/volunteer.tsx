@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { useGetVolunteerPage, useTickVolunteerTask, getGetVolunteerPageQueryKey, type VolunteerPage } from "@workspace/api-client-react";
+import { useGetVolunteerPage, useTickVolunteerTask, getGetVolunteerPageQueryKey, type PublicAnnouncement, type VolunteerPage } from "@workspace/api-client-react";
 import { PublicFrame, PublicMessage } from "@/components/public-frame";
 import { Icon, Skel } from "@/components/brand";
 import { copyText, dueLabel, errorMessage, errorStatus, fmtInTz, fmtTime } from "@/lib/encore";
@@ -20,6 +20,11 @@ function countdown(startIso: string, now: number) {
   const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
   if (d > 0) return `Doors in ${d}d ${h}h`;
   return `Doors in ${h > 0 ? `${h}h ` : ""}${mm}m`;
+}
+
+function LatestAnnouncement({ announcement, timezone }: { announcement: PublicAnnouncement | null; timezone: string }) {
+  if (!announcement) return null;
+  return <section className="ai-glass mb-4 rise" data-testid="panel-latest-announcement"><div className="mono-label mb-2">Latest from the organizers</div><p className="text-[15px] whitespace-pre-wrap" data-testid="text-latest-announcement">{announcement.body}</p><p className="text-[12px] mt-3 opacity-75" data-testid="text-announcement-date">{fmtInTz(announcement.created_at, timezone, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</p></section>;
 }
 
 function Checklist({ token, page }: { token: string; page: VolunteerPage }) {
@@ -72,11 +77,13 @@ export default function VolunteerPrivatePage() {
   const day = fmtInTz(ev.starts_at, ev.timezone, { weekday: "short", month: "short", day: "numeric" });
   const url = window.location.href;
   const removed = p.status === "removed" || p.status === "cancelled";
+  const announcement: PublicAnnouncement | null = p.announcement;
 
   if (p.event_day && !removed) {
     const doneN = p.tasks.filter((t) => t.status === "done").length;
     return (
       <PublicFrame label={day}>
+        <LatestAnnouncement announcement={announcement} timezone={ev.timezone} />
         <section className="rounded-[20px] p-5 text-[#FEFCF0] rise" style={{ background: "#37442E", boxShadow: "0 14px 34px rgba(55,68,46,0.28)" }} data-testid="card-countdown">
           <div className="font-mono-ui text-[11px] uppercase tracking-[0.16em]" style={{ color: "#D8E3C4" }}>Event day</div>
           <div className="flex items-end justify-between gap-3 mt-1">
@@ -108,6 +115,7 @@ export default function VolunteerPrivatePage() {
 
   return (
     <PublicFrame label="Confirmed">
+      <LatestAnnouncement announcement={announcement} timezone={ev.timezone} />
       {removed ? (
         <PublicMessage title="Your spot was released" body="The organizers removed this sign-up. If that is unexpected, reach out to them directly." />
       ) : (

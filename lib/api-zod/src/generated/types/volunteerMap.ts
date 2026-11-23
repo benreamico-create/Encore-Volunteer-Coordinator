@@ -7,6 +7,7 @@
  */
 import type { MapItem } from './mapItem';
 import type { MapSummary } from './mapSummary';
+import type { PublicAnnouncement } from './publicAnnouncement';
 import type { PublicEvent } from './publicEvent';
 import type { Role } from './role';
 
@@ -18,4 +19,5 @@ export interface VolunteerMap {
   items: MapItem[];
   /** @nullable */
   own_station_id: number | null;
+  announcement: PublicAnnouncement | null;
 }

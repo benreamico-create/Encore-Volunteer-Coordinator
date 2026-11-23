@@ -890,6 +890,142 @@ export const UpdateEventResponse = zod.object({
 }))
 
 
+export const ListEventMessagesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const listEventMessagesQueryAfterDefault = 0;
+export const listEventMessagesQueryAfterMin = 0;
+
+
+
+export const ListEventMessagesQueryParams = zod.object({
+  "after": zod.coerce.number().int().min(listEventMessagesQueryAfterMin).default(listEventMessagesQueryAfterDefault)
+})
+
+export const listEventMessagesResponseBodyMax = 2000;
+
+
+
+export const ListEventMessagesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "user_id": zod.number().int(),
+  "user_name": zod.string(),
+  "body": zod.string().max(listEventMessagesResponseBodyMax),
+  "created_at": zod.coerce.date(),
+  "deleted_at": zod.coerce.date().nullable()
+})
+export const ListEventMessagesResponse = zod.array(ListEventMessagesResponseItem)
+
+
+export const CreateEventMessageParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const createEventMessageBodyBodyMax = 2000;
+
+
+
+export const CreateEventMessageBody = zod.object({
+  "body": zod.string().min(1).max(createEventMessageBodyBodyMax)
+})
+
+export const createEventMessageResponseBodyMax = 2000;
+
+
+
+export const CreateEventMessageResponse = zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "user_id": zod.number().int(),
+  "user_name": zod.string(),
+  "body": zod.string().max(createEventMessageResponseBodyMax),
+  "created_at": zod.coerce.date(),
+  "deleted_at": zod.coerce.date().nullable()
+})
+
+
+export const DeleteEventMessageParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "itemId": zod.coerce.number().int()
+})
+
+export const deleteEventMessageResponseBodyMax = 2000;
+
+
+
+export const DeleteEventMessageResponse = zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "user_id": zod.number().int(),
+  "user_name": zod.string(),
+  "body": zod.string().max(deleteEventMessageResponseBodyMax),
+  "created_at": zod.coerce.date(),
+  "deleted_at": zod.coerce.date().nullable()
+})
+
+
+export const GetEventAnnouncementParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const getEventAnnouncementResponseOneBodyMax = 500;
+
+
+
+export const GetEventAnnouncementResponse = zod.union([zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "user_id": zod.number().int(),
+  "body": zod.string().max(getEventAnnouncementResponseOneBodyMax),
+  "created_at": zod.coerce.date()
+}),zod.null()])
+
+
+export const CreateEventAnnouncementParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const createEventAnnouncementBodyBodyMax = 500;
+
+
+
+export const CreateEventAnnouncementBody = zod.object({
+  "body": zod.string().min(1).max(createEventAnnouncementBodyBodyMax)
+})
+
+export const createEventAnnouncementResponseBodyMax = 500;
+
+
+
+export const CreateEventAnnouncementResponse = zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "user_id": zod.number().int(),
+  "body": zod.string().max(createEventAnnouncementResponseBodyMax),
+  "created_at": zod.coerce.date()
+})
+
+
+
+
+
+export const DraftAnnouncementBody = zod.object({
+  "event_id": zod.number().int().min(1)
+})
+
+export const draftAnnouncementResponseBodyMax = 500;
+
+
+
+export const DraftAnnouncementResponse = zod.object({
+  "body": zod.string().max(draftAnnouncementResponseBodyMax),
+  "notice": zod.string(),
+  "ai_remaining": zod.number().int()
+})
+
+
 export const GetEventMapParams = zod.object({
   "id": zod.coerce.number().int()
 })
@@ -2011,6 +2147,8 @@ export const getVolunteerPageResponseTasksItemOneTitleMax = 300;
 
 export const getVolunteerPageResponseTasksItemOneGroupNameMax = 120;
 
+export const getVolunteerPageResponseAnnouncementOneBodyMax = 500;
+
 
 
 export const GetVolunteerPageResponse = zod.object({
@@ -2055,7 +2193,12 @@ export const GetVolunteerPageResponse = zod.object({
   "sort_order": zod.number()
 }))),
   "event_day": zod.boolean(),
-  "has_map_post": zod.boolean()
+  "has_map_post": zod.boolean(),
+  "announcement": zod.union([zod.object({
+  "id": zod.number().int(),
+  "body": zod.string().max(getVolunteerPageResponseAnnouncementOneBodyMax),
+  "created_at": zod.coerce.date()
+}),zod.null()])
 })
 
 
@@ -2086,6 +2229,8 @@ export const getVolunteerMapResponseItemsItemOneHPctMax = 100;
 export const getVolunteerMapResponseItemsItemOneVendorNameMax = 160;
 
 export const getVolunteerMapResponseItemsItemOneNeedsTextMax = 1000;
+
+export const getVolunteerMapResponseAnnouncementOneBodyMax = 500;
 
 
 
@@ -2138,7 +2283,12 @@ export const GetVolunteerMapResponse = zod.object({
   "role_id": zod.number().int().nullable(),
   "sort_order": zod.number()
 }))),
-  "own_station_id": zod.number().int().nullable()
+  "own_station_id": zod.number().int().nullable(),
+  "announcement": zod.union([zod.object({
+  "id": zod.number().int(),
+  "body": zod.string().max(getVolunteerMapResponseAnnouncementOneBodyMax),
+  "created_at": zod.coerce.date()
+}),zod.null()])
 })
 
 

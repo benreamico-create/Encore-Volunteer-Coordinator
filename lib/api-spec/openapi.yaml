@@ -134,6 +134,85 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Event" }
+  /events/{id}/messages:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      operationId: listEventMessages
+      parameters:
+        - name: after
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Organizer-only messages after the supplied cursor
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/TeamMessage" } }
+    post:
+      operationId: createEventMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MessageInput" }
+      responses:
+        "201":
+          description: Saved organizer message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeamMessage" }
+  /events/{id}/messages/{itemId}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/ItemId" }
+    delete:
+      operationId: deleteEventMessage
+      responses:
+        "200":
+          description: Soft-deleted organizer message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeamMessage" }
+  /events/{id}/announcements:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      operationId: getEventAnnouncement
+      responses:
+        "200":
+          description: Latest organizer announcement, if one exists
+          content:
+            application/json:
+              schema: { anyOf: [{ $ref: "#/components/schemas/Announcement" }, { type: "null" }] }
+    post:
+      operationId: createEventAnnouncement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnnouncementInput" }
+      responses:
+        "201":
+          description: Saved volunteer announcement
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Announcement" }
+  /ai/announcement:
+    post:
+      operationId: draftAnnouncement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnnouncementDraftInput" }
+      responses:
+        "200":
+          description: Editable announcement draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnnouncementDraft" }
   /events/{id}/map:
     parameters:
       - { $ref: "#/components/parameters/Id" }
@@ -892,7 +971,7 @@ components:
         token: { type: string }
     VolunteerPage:
       type: object
-      required: [name, status, role, event, tasks, event_day, has_map_post]
+      required: [name, status, role, event, tasks, event_day, has_map_post, announcement]
       properties:
         name: { type: string }
         status: { type: string }
@@ -901,6 +980,7 @@ components:
         tasks: { type: array, items: { $ref: "#/components/schemas/Task" } }
         event_day: { type: boolean }
         has_map_post: { type: boolean }
+        announcement: { anyOf: [{ $ref: "#/components/schemas/PublicAnnouncement" }, { type: "null" }] }
     MapUploadInput:
       type: object
       required: [name, size, contentType]
@@ -985,7 +1065,7 @@ components:
         map_shared: { type: boolean }
     VolunteerMap:
       type: object
-      required: [available, event, role, map, items, own_station_id]
+      required: [available, event, role, map, items, own_station_id, announcement]
       properties:
         available: { type: boolean }
         event: { $ref: "#/components/schemas/PublicEvent" }
@@ -993,6 +1073,56 @@ components:
         map: { anyOf: [{ $ref: "#/components/schemas/MapSummary" }, { type: "null" }] }
         items: { type: array, items: { $ref: "#/components/schemas/MapItem" } }
         own_station_id: { type: [integer, "null"] }
+        announcement: { anyOf: [{ $ref: "#/components/schemas/PublicAnnouncement" }, { type: "null" }] }
+    MessageInput:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 2000 }
+    TeamMessage:
+      type: object
+      required: [id, event_id, user_id, user_name, body, created_at, deleted_at]
+      properties:
+        id: { type: integer }
+        event_id: { type: integer }
+        user_id: { type: integer }
+        user_name: { type: string }
+        body: { type: string, maxLength: 2000 }
+        created_at: { type: string, format: date-time }
+        deleted_at: { type: [string, "null"], format: date-time }
+    AnnouncementInput:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 500 }
+    AnnouncementDraftInput:
+      type: object
+      required: [event_id]
+      properties:
+        event_id: { type: integer, minimum: 1 }
+    Announcement:
+      type: object
+      required: [id, event_id, user_id, body, created_at]
+      properties:
+        id: { type: integer }
+        event_id: { type: integer }
+        user_id: { type: integer }
+        body: { type: string, maxLength: 500 }
+        created_at: { type: string, format: date-time }
+    PublicAnnouncement:
+      type: object
+      required: [id, body, created_at]
+      properties:
+        id: { type: integer }
+        body: { type: string, maxLength: 500 }
+        created_at: { type: string, format: date-time }
+    AnnouncementDraft:
+      type: object
+      required: [body, notice, ai_remaining]
+      properties:
+        body: { type: string, maxLength: 500 }
+        notice: { type: string }
+        ai_remaining: { type: integer }
     TickInput:
       type: object
       required: [done]

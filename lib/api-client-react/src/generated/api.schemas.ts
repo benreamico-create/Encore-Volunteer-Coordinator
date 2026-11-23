@@ -548,6 +548,13 @@ export interface JoinResult {
   token: string;
 }
 
+export interface PublicAnnouncement {
+  id: number;
+  /** @maxLength 500 */
+  body: string;
+  created_at: string;
+}
+
 export interface VolunteerPage {
   name: string;
   status: string;
@@ -556,6 +563,7 @@ export interface VolunteerPage {
   tasks: Task[];
   event_day: boolean;
   has_map_post: boolean;
+  announcement: PublicAnnouncement | null;
 }
 
 export type MapUploadInputContentType = typeof MapUploadInputContentType[keyof typeof MapUploadInputContentType];
@@ -767,9 +775,66 @@ export interface VolunteerMap {
   items: MapItem[];
   /** @nullable */
   own_station_id: number | null;
+  announcement: PublicAnnouncement | null;
+}
+
+export interface MessageInput {
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  body: string;
+}
+
+export interface TeamMessage {
+  id: number;
+  event_id: number;
+  user_id: number;
+  user_name: string;
+  /** @maxLength 2000 */
+  body: string;
+  created_at: string;
+  /** @nullable */
+  deleted_at: string | null;
+}
+
+export interface AnnouncementInput {
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  body: string;
+}
+
+export interface AnnouncementDraftInput {
+  /** @minimum 1 */
+  event_id: number;
+}
+
+export interface Announcement {
+  id: number;
+  event_id: number;
+  user_id: number;
+  /** @maxLength 500 */
+  body: string;
+  created_at: string;
+}
+
+export interface AnnouncementDraft {
+  /** @maxLength 500 */
+  body: string;
+  notice: string;
+  ai_remaining: number;
 }
 
 export interface TickInput {
   done: boolean;
 }
+
+export type ListEventMessagesParams = {
+/**
+ * @minimum 0
+ */
+after?: number;
+};
 
