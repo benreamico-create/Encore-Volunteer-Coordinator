@@ -68,6 +68,7 @@ All demo data is fictional. **Load demo data** creates Calgary Builder Nights wi
 ```sh
 pnpm run typecheck
 pnpm --filter @workspace/api-server run self-test
+pnpm --filter @workspace/scripts run encore:check
 ```
 
 The API self-test runs phase checks in order and deletes its own randomized fictional test accounts and their data afterwards. It covers:
@@ -83,7 +84,15 @@ The API self-test runs phase checks in order and deletes its own randomized fict
 - Private reminder drafts with sending off and idempotent fictional demo loading.
 - Organizer chat polling cursors, message-length and ownership checks, soft-delete updates, cross-session persistence and per-user rate limits; announcement length, history/latest replacement, and the private volunteer/map response shape.
 
-These are API integration checks, not an end-to-end browser certification. The authenticated Plan, Wrap-up, dashboard, task board and navigation pass at 375px and 1280px is recorded below. Other signed-in surfaces still need their own checks before the full PRD 0.6 release gate is cleared.
+The browser check uses Playwright and a locally installed Chromium (`CHROMIUM_PATH` overrides `/repl/tools/bin/chromium`), against the running preview (`ENCORE_TEST_URL` overrides `http://localhost:80`). It uses real authentication, randomized fictional accounts and ordinary UI interactions. It deletes only those accounts and their fixtures in `finally`. Both suites refuse to run with `AI_ENABLED=true`. Screenshots are written to the ignored `generated-artifacts/core-check/` directory.
+
+### Core release verification
+
+The API suite passed phases 0–4. The browser suite verifies signup/logout/login, the event wizard and purpose fields, editing/deleting template suggestions and accepting the plan, accepted-event edits and due-date confirmation, inline task/role edits, organizer/volunteer assignment, full-card dragging through all three columns, the “Move to…” menu, public signup/full capacity, private event-day checklist sync, reminder copy fallback, Blueprint editing/zoom/pan/responsive positions, sharing revocation, latest-only announcements and chat polling. It checks Dashboard, New event, Plan, Tasks, Volunteers, Blueprint, Chat, Wrap-up and Next event at 375px and 1280px, including the mobile sidebar drawer. Public signup/private/map screens are checked at both widths too.
+
+Fixed during verification: next-event creation no longer requires a wrap-up; its dashboard action is available for every event. Existing selections carry forward without inventing lessons. Dashboard/Volunteers/Wrap-up no longer overflow at phone width. The sidebar chevron manually collapses/expands; clicking the primary logo goes to the dashboard and persists the collapsed state.
+
+**Gate limitation — do not treat owner sessions as two different organizers:** §0.6 item 11 asks for two organizer accounts in the same event, but F-3 assigns teammate invitations/permissions to P1. The existing owner-only authorization correctly denies unrelated accounts. Chat polling passed between two independently authenticated browser sessions of the same owner, and unrelated-account/volunteer access was denied; collaboration between two distinct organizer accounts is **not verified or available**. The literal full P0 gate is therefore not cleared. Resolve this prerequisite before starting the queued P1 work, rather than weakening organizer isolation. No paid AI requests or emails were sent.
 
 ### v2.1 Tier 1 status
 
@@ -115,7 +124,7 @@ Event-editor/task-board regression verification also passed all four API phases,
 
 Authenticated-screen verification on November 23, 2026 used the fictional Calgary Builder Nights demo. Plan, Wrap-up, dashboard, task board and navigation were reviewed at 375px and 1280px with no horizontal overflow. Desktop navigation and the mobile More menu both navigated correctly; desktop pointer drag and mobile touch-hold drag moved tasks between columns. Changing the event date showed the due-date confirmation, shifted unfinished task dates and preserved completed dates. Reducing a full volunteer role below its signup count was blocked, and the old `/recap` route redirected to `/wrapup`.
 
-The first dashboard request exposed an outdated development database schema; the documented additive `db:setup:dev` step restored the missing development columns. The API self-test then passed phases 0–4. The Encore typecheck still reports pre-existing generated API-client type drift across the event editor, Blueprint, Chat, Plan, and volunteer screens; the generated client needs to be brought in sync as part of the queued core-check work.
+The first dashboard request exposed an outdated development database schema; the documented additive `db:setup:dev` step restored the missing development columns. The API self-test passed phases 0–4. The current full workspace typecheck and Encore production build also pass. The build reports non-blocking third-party sourcemap and bundle-size warnings.
 
 ## Decisions
 
@@ -153,8 +162,6 @@ Publishing requires the user's Publish action. There is no production URL until 
 ### P1 — deferred behind the P0 release gate
 
 - Resend confirmation and organizer-triggered reminder sending, send confirmations, throttling and email logs (F-27/F-28).
-- Attendance CSV upload with column mapping and malformed-row feedback (F-32).
-- Series attendance/show-rate trends (F-33).
 - Co-organizer invite links and owner/editor/viewer access (F-3).
 - Volunteer cancellation and calendar `.ics` download (F-23/F-24).
 - Email password reset (F-1b).
@@ -162,6 +169,6 @@ Publishing requires the user's Publish action. There is no production URL until 
 
 ### Explicitly excluded
 
-No P2, Eventbrite pull, venue/sponsor pipeline or reserved pipeline tables. No ticketing, payments, RSVP, public discovery, volunteer chat, bulk campaigns, native app, billing/subscriptions, calendar sync or scheduled background reminders.
+No P2, attendance CSV import (F-32), attendance/show-rate trends (F-33), Eventbrite pull, venue/sponsor pipeline or reserved pipeline tables. No ticketing, payments, RSVP, public discovery, volunteer chat, bulk campaigns, native app, billing/subscriptions, calendar sync or scheduled background reminders.
 
 Entering a real past event, domain verification, production publishing and choosing the Publishing machine cap are not silently simulated.

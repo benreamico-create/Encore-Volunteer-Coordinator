@@ -25,3 +25,9 @@ Use the user's own Anthropic account for Claude rather than switching them to Re
 **Why:** The user supplied a Claude API key for Encore after the original OpenAI-only implementation. Their small provider balance and conservative-spending instruction still apply.
 
 **How to apply:** Keep provider credentials server-side and never treat adding or replacing a key as permission to enable paid calls. Use mocked provider responses for development verification.
+
+Do not count two sessions of the same organizer as proof of collaboration between distinct organizers.
+
+**Why:** PRD v2.1 §0.6 item 11 requires two organizers sharing an event, while F-3 categorizes the invitations and shared access prerequisite as P1, behind the P0 gate. These requirements conflict.
+
+**How to apply:** Keep owner isolation intact and report the exact coverage limitation. Resolve the prerequisite explicitly before declaring the literal gate passed; never broaden access to all signed-in users just to make chat tests pass.

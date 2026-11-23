@@ -24,12 +24,13 @@ router.post("/ai/starter",async(req,res)=>{
 router.post("/events/:id/next",async(req,res)=>{
   const uid=userId(req),eid=id(req.params.id),data=CreateNextEventBody.parse(req.body);
   const next=await transaction(async client=>{
-    const prev=await ownedEvent(uid,eid,client),recap=required(await recapData(eid,client),"Save your wrap-up before creating the next event.");
+    const prev=await ownedEvent(uid,eid,client),recap=await recapData(eid,client);
+    const resources=await rows("SELECT * FROM resources WHERE event_id=$1 AND use_again=true ORDER BY id",[eid],client);
     const willing=data.carry_volunteers ? await rows("SELECT * FROM volunteers WHERE event_id=$1 AND ask_again=true AND status='confirmed' ORDER BY id",[eid],client) : [];
     if(willing.length && !data.carry_roles) throw new HttpError(400,"Include roles when carrying volunteers so each person keeps their chosen role.");
     const event=await insertEvent(prev.series_id,{...prev,name:data.name,starts_at:data.starts_at},eid,client);
-    if(data.carry_lessons) await client.query("UPDATE events SET carried_lesson=$1,carried_didnt=$2 WHERE id=$3",[recap.top_lesson,recap.what_didnt,event.id]);
-    if(data.carry_resources) for(const r of recap.resources.filter((r:any)=>r.use_again)) await client.query("INSERT INTO resources(event_id,name,kind,note,use_again,carried_from_id) VALUES($1,$2,$3,$4,true,$5)",[event.id,r.name,r.kind,r.note,r.id]);
+    if(data.carry_lessons && recap) await client.query("UPDATE events SET carried_lesson=$1,carried_didnt=$2 WHERE id=$3",[recap.top_lesson,recap.what_didnt,event.id]);
+    if(data.carry_resources) for(const r of resources) await client.query("INSERT INTO resources(event_id,name,kind,note,use_again,carried_from_id) VALUES($1,$2,$3,$4,true,$5)",[event.id,r.name,r.kind,r.note,r.id]);
     const roleMap=new Map<number,number>(),volunteerMap=new Map<number,number>();
     if(data.carry_roles) for(const r of await rows("SELECT * FROM roles WHERE event_id=$1 ORDER BY sort_order,id",[eid],client)) {
       const nr=await one("INSERT INTO roles(event_id,name,instruction,slots_needed,sort_order) VALUES($1,$2,$3,$4,$5) RETURNING id",[event.id,r.name,r.instruction,r.slots_needed,r.sort_order],client);
@@ -46,7 +47,7 @@ router.post("/events/:id/next",async(req,res)=>{
         );
         const keepVendorNames=new Set(
           data.carry_resources
-            ? recap.resources.filter((resource:any)=>resource.kind==="vendor"&&resource.use_again).map((resource:any)=>resource.name.trim().toLowerCase())
+            ? resources.filter((resource)=>resource.kind==="vendor").map((resource)=>resource.name.trim().toLowerCase())
             : [],
         );
         for(const item of await rows("SELECT * FROM map_items WHERE map_id=$1 ORDER BY sort_order,id",[priorMap.id],client)) {

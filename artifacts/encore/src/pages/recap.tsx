@@ -117,7 +117,7 @@ export default function RecapPage() {
       <PageHeader title="Wrap-up" subtitle={`${ev.name} · ${fmtDate(ev.starts_at, ev.timezone)}`}
         actions={<>
           <button className="btn btn-secondary" onClick={() => doSave()} disabled={save.isPending || !dirty} data-testid="button-save-wrapup">{save.isPending ? "Saving" : dirty ? "Save wrap-up" : "Saved"}</button>
-          <button className="btn btn-primary" onClick={goNext} disabled={save.isPending} data-testid="button-create-next"><Icon name="loop" size={16} /> Create next event from this one</button>
+          <button className="btn btn-primary" onClick={goNext} disabled={save.isPending} data-testid="button-create-next"><Icon name="loop" size={16} /> Create next event</button>
         </>} />
       {dirty && <div className="mono-label mb-4 rise" style={{ color: "#8A7330" }} data-testid="text-unsaved">Unsaved changes</div>}
       <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import pg from "pg";
 const base = "http://localhost:80/api";
+assert.notEqual(process.env.AI_ENABLED,"true","Turn paid AI off before running self-tests.");
 const pool = new pg.Pool({connectionString:process.env.DATABASE_URL});
 const users = [];
 export class Client {
@@ -221,6 +222,17 @@ try {
         const willing=await publicClient.call(`/public/join/${event.signup_slug}`,"POST",{name:"Fictional Priya",role_id:role2.id,email:"consented@example.invalid",email_consent:true,ask_again:true});
         await publicClient.call(`/public/join/${event.signup_slug}`,"POST",{name:"Fictional Sam",role_id:role2.id,email_consent:false,ask_again:false});
         const recurring=await a.call(`/events/${event.id}/tasks`,"POST",{title:"Repeat this fictional task",recurring:true,assignee_user_id:signed.user.id,due_date:"2027-03-18"});
+        const withoutWrapup=await a.call(`/events/${event.id}/next`,"POST",{
+          name:"Fictional next without wrap-up",starts_at:"2027-04-20T01:00:00Z",
+          carry_lessons:true,carry_resources:true,carry_roles:true,carry_recurring:true,carry_volunteers:true,carry_map:true,items:[]
+        });
+        const noWrapBundle=await a.call(`/events/${withoutWrapup.id}`);
+        assert.equal(noWrapBundle.event.previous_event_id,event.id);
+        assert.equal(noWrapBundle.event.carried_lesson,"");
+        assert.equal(noWrapBundle.volunteers.length,1);
+        assert.notEqual(noWrapBundle.volunteers[0].token,willing.token);
+        assert(noWrapBundle.tasks.some(t=>t.title===recurring.title&&t.source==="carryover"&&t.due_date==="2027-04-15"));
+        assert.equal((await a.call(`/events/${withoutWrapup.id}/map`)).items.length,2);
         const recap={registered:80,attended:60,what_worked:"Small groups",what_didnt:"Late briefing",top_lesson:"Brief the team earlier",rating_overall:4,rating_venue:3,rating_volunteers:5,resources:[
           {name:"Fictional room",kind:"venue",note:"Bright and flexible",use_again:true},
           {name:"Do not reuse this fictional vendor",kind:"vendor",note:"Not a fit",use_again:false},
@@ -255,6 +267,7 @@ try {
         assert.equal(nb.roles.length,accepted.roles.length+1);
         assert(nb.tasks.some(t=>t.title==="An edited starter task"&&t.source==="starter"));
         assert(nb.tasks.some(t=>t.title===recurring.title&&t.source==="carryover"));
+        assert.equal(nb.tasks.find(t=>t.title===recurring.title).due_date,"2027-04-15");
         assert.equal(nb.event.plan_accepted,false);
         const blank=await a.call(`/events/${event.id}/next`,"POST",{...input,name:"Fictional no carry-over",carry_lessons:false,carry_resources:false,carry_roles:false,carry_recurring:false,carry_volunteers:false,carry_map:false,items:[]});
         const bb=await a.call(`/events/${blank.id}`); assert.equal(bb.resources.length,0); assert.equal(bb.roles.length,0); assert.equal(bb.tasks.length,0); assert.equal(bb.volunteers.length,0); assert.equal(bb.event.carried_lesson,"");

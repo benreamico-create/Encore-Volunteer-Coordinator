@@ -22,7 +22,7 @@ function EventCard({ e, i, n }: { e: Event; i: number; n: number }) {
   const pct = e.tasks_total ? Math.round((e.tasks_done / e.tasks_total) * 100) : 0;
   const d = new Date(e.starts_at);
   return (
-    <article className="glass rise group flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 transition-transform duration-300 hover:-translate-y-0.5" style={{ animationDelay: `${120 + i * 60}ms` }} data-testid={`card-event-${e.id}`}>
+    <article className="glass rise group min-w-0 flex flex-col 2xl:flex-row 2xl:items-center gap-4 sm:gap-6 transition-transform duration-300 hover:-translate-y-0.5" style={{ animationDelay: `${120 + i * 60}ms` }} data-testid={`card-event-${e.id}`}>
       <div className="shrink-0 w-12 h-12 rounded-[14px] flex items-center justify-center font-display text-[22px]" style={{ background: "rgba(55,68,46,0.14)", color: "#37442E" }} title={`Event ${n}`}>{n}</div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2.5">
@@ -43,11 +43,9 @@ function EventCard({ e, i, n }: { e: Event; i: number; n: number }) {
       <Link href={`/app/events/${e.id}/plan`} className="btn btn-primary self-start sm:self-center" data-testid={`button-open-event-${e.id}`}>
         Open <Icon name="arrow" size={15} />
       </Link>
-      {e.status === "done" && (
         <Link href={`/app/events/${e.id}/next`} className="btn btn-secondary self-start sm:self-center" data-testid={`button-create-next-${e.id}`}>
           <Icon name="loop" size={15} /> Create next event
         </Link>
-      )}
     </article>
   );
 }
@@ -193,8 +191,8 @@ export default function DashboardPage() {
             <button className="btn btn-primary" onClick={() => navigate(`/app/series/${d.series.id}/events/new`)} data-testid="button-new-event"><Icon name="plus" size={16} /> New event</button>
           </>}
         />
-        <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
-          <div className="space-y-3">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
+          <div className="space-y-3 min-w-0">
             <div className="mono-label !text-[12px]">Events in this series</div>
             {events.length ? (
               events.map((e, i) => <EventCard key={e.id} e={e} i={i} n={[...d.events].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at)).findIndex((x) => x.id === e.id) + 1} />)

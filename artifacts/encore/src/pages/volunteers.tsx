@@ -181,7 +181,7 @@ export default function VolunteersPage() {
     <Shell event={{ id: ev.id, name: ev.name }}>
       <PageHeader title="Volunteers" subtitle={`${ev.name} · ${filled} of ${total} spots filled`}
         actions={<button className="btn btn-secondary" onClick={() => setReminder(true)} data-testid="button-reminder"><Icon name="copy" size={15} /> Reminder message</button>} />
-      <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         <div className="space-y-4 min-w-0">
           {b.roles.length === 0 && (
             <div className="glass text-center !p-8" data-testid="panel-no-roles">
@@ -189,14 +189,14 @@ export default function VolunteersPage() {
               <p className="text-muted-ink mt-1">Add the jobs you need people for. Each one shows on the sign-up page with its spots.</p>
             </div>
           )}
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {b.roles.map((r, i) => {
               const people = b.volunteers.filter((v) => v.role_id === r.id);
               const full = r.filled >= r.slots_needed;
               return (
-                <article key={r.id} className="glass rise flex flex-col" style={{ animationDelay: `${i * 50}ms` }} data-testid={`card-role-${r.id}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-display text-[22px] leading-tight">{r.name}</h3>
+                <article key={r.id} className="glass rise flex flex-col min-w-0" style={{ animationDelay: `${i * 50}ms` }} data-testid={`card-role-${r.id}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <h3 className="font-display text-[22px] leading-tight break-words min-w-0">{r.name}</h3>
                     <span className={`chip ${full ? "chip-done" : "chip-open"}`} data-testid={`text-role-filled-${r.id}`}>{r.filled} of {r.slots_needed} filled</span>
                   </div>
                   {r.instruction && <p className="text-[14px] text-muted-ink mt-1.5">{r.instruction}</p>}

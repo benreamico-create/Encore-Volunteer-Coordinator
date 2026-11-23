@@ -50,12 +50,6 @@ export default function NextEventPage() {
     return <Shell><ErrorPanel title={nf ? "Event not found" : "That did not load"} message={nf ? "This event does not exist or belongs to someone else." : errorMessage(q.error)} onRetry={nf ? undefined : () => void q.refetch()} /></Shell>;
   }
   const ev = b.event;
-  if (!b.recap) return (
-    <Shell event={{ id: ev.id, name: ev.name }}>
-      <PageHeader title="New event from wrap-up" subtitle={ev.name} />
-      <div className="glass !p-8 max-w-[560px]"><h2 className="font-display text-[24px]">Save a wrap-up first.</h2><p className="text-muted-ink mt-2">The next event starts from what you learned. Fill in the wrap-up, save it, then come back.</p><Link href={`/app/events/${id}/wrapup`} className="btn btn-primary mt-5" data-testid="link-to-wrapup">Open wrap-up</Link></div>
-    </Shell>
-  );
   const r = b.recap;
   const reuse = b.resources.filter((x) => x.use_again);
   const recurring = b.tasks.filter((t) => t.recurring);
@@ -82,14 +76,14 @@ export default function NextEventPage() {
 
   return (
     <Shell event={{ id: ev.id, name: ev.name }}>
-      <PageHeader title="New event from wrap-up" subtitle="Lessons and resources come with you"
-        actions={<Link href={`/app/events/${id}/wrapup`} className="btn btn-secondary" data-testid="link-back-wrapup">Back to wrap-up</Link>} />
+      <PageHeader title="Create next event" subtitle="Bring forward the parts you want to keep"
+        actions={<Link href={r ? `/app/events/${id}/wrapup` : "/app"} className="btn btn-secondary" data-testid="link-back-wrapup">{r ? "Back to wrap-up" : "Back to dashboard"}</Link>} />
       <form onSubmit={submit} className="grid lg:grid-cols-[1fr_380px] gap-6 items-start" data-testid="form-next">
         <div className="space-y-4 min-w-0">
           <section className="glass">
             <div className="mono-label mb-1">Carry over from {ev.name}</div>
             <div className="divide-y" style={{ borderColor: "var(--line)" }}>
-              <Check testid="check-lessons" checked={flags.carry_lessons} onChange={(v) => setFlag("carry_lessons", v)} title="Lessons" detail={r.top_lesson || r.what_didnt ? <>{r.top_lesson && <>Top lesson: "{r.top_lesson}"</>}{r.what_didnt && <span className="block">Did not work: {r.what_didnt}</span>}</> : "No lesson written."} />
+              <Check testid="check-lessons" checked={flags.carry_lessons && !!r} disabled={!r} onChange={(v) => setFlag("carry_lessons", v)} title="Lessons" detail={r?.top_lesson || r?.what_didnt ? <>{r.top_lesson && <>Top lesson: "{r.top_lesson}"</>}{r.what_didnt && <span className="block">Did not work: {r.what_didnt}</span>}</> : "No wrap-up lessons yet. You can still create the next event."} />
               <Check testid="check-resources" checked={flags.carry_resources} onChange={(v) => setFlag("carry_resources", v)} title="Resources to use again" detail={reuse.length ? reuse.map((x) => x.name).join(", ") : "None marked use again."} />
               <Check testid="check-roles" checked={flags.carry_roles || flags.carry_volunteers} disabled={flags.carry_volunteers} onChange={(v) => setFlag("carry_roles", v)} title="Volunteer roles" detail={<>{b.roles.length ? b.roles.map((x) => `${x.name} (${x.slots_needed})`).join(", ") : "No roles."}{flags.carry_volunteers && <span className="block" style={{ color: "#8A7330" }}>Kept on because returning volunteers need their roles.</span>}</>} />
               <Check testid="check-recurring" checked={flags.carry_recurring} onChange={(v) => setFlag("carry_recurring", v)} title="Recurring tasks" detail={recurring.length ? recurring.map((t) => t.title).join(", ") : "No tasks marked recurring."} />
