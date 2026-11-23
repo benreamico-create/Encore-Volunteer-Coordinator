@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { CreateSeriesDialog } from "@/components/create-series-dialog";
+import { useGetDashboard, getGetDashboardQueryKey, useGetEvent, getGetEventQueryKey } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -40,47 +42,28 @@ export function SeriesSwitcher({ onNew }: { onNew: () => void }) {
   );
 }
 
-function NavList({ event, onNavigate, mobile = false }: { event: ShellEvent; onNavigate?: () => void; mobile?: boolean }) {
-  const [loc] = useLocation();
-  const { toast } = useToast();
-  const items: { label: string; icon: "tasks" | "people" | "plan" | "loop" | "map" | "chat" | "tag"; href: string | null; soon?: boolean }[] = [
-    { label: "Plan", icon: "plan", href: event ? `/app/events/${event.id}/plan` : null },
-    { label: "Tasks", icon: "tasks", href: event ? `/app/events/${event.id}/tasks` : null },
-    { label: "Volunteers", icon: "people", href: event ? `/app/events/${event.id}/volunteers` : null },
-    { label: "Blueprint", icon: "map", href: event ? `/app/events/${event.id}/blueprint` : null },
-    { label: "Chat", icon: "chat", href: event ? `/app/events/${event.id}/chat` : null },
-    { label: "Sponsors", icon: "tag", href: null, soon: true },
-    { label: "Wrap-up", icon: "loop", href: event ? `/app/events/${event.id}/wrapup` : null },
-  ];
-  const visibleItems = mobile ? items.filter((item) => ["Plan", "Tasks", "Volunteers", "Blueprint", "Chat"].includes(item.label)) : items;
-  return (
-    <nav className={mobile ? "flex items-center justify-around gap-1" : "flex flex-col items-center gap-2"} aria-label="Main">
-      {visibleItems.map((it) =>
-        it.href ? (
-          <Tooltip key={it.label}>
-            <TooltipTrigger asChild>
-              <Link key={it.label} href={it.href} onClick={onNavigate} className={mobile ? "bottom-nav-item" : "rail-icon"} aria-label={it.label} aria-current={loc === it.href || loc.startsWith(`${it.href}/`) ? "page" : undefined} data-active={loc === it.href || loc.startsWith(`${it.href}/`)} data-testid={`nav-${it.label.toLowerCase()}`}>
-                <Icon name={it.icon} size={22} />{mobile && <span>{it.label}</span>}
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side={mobile ? "top" : "right"}>{it.label}</TooltipContent>
-          </Tooltip>
-        ) : (
-          <Tooltip key={it.label}>
-            <TooltipTrigger asChild>
-              <button type="button" className={mobile ? "bottom-nav-item is-disabled" : "rail-icon is-disabled"} aria-label={it.soon ? `${it.label}, coming soon` : `${it.label}, open an event first`} aria-disabled="true" title={it.soon ? `${it.label} is coming soon` : "Open an event first"} onClick={() => toast({ title: it.soon ? `${it.label} is coming soon` : "Open an event first" })} data-testid={`nav-${it.label.toLowerCase()}-disabled`}>
-                <Icon name={it.icon} size={22} />{mobile && <span>{it.label}</span>}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side={mobile ? "top" : "right"}>{it.soon ? `${it.label} · coming soon` : `${it.label} · open an event first`}</TooltipContent>
-          </Tooltip>
-        ),
-      )}
-    </nav>
-  );
+type TabKey = "plan" | "tasks" | "volunteers" | "blueprint" | "chat" | "wrapup";
+const PRIMARY_TABS: { key: TabKey; label: string; icon: "plan" | "tasks" | "people" | "map" | "chat" }[] = [
+  { key: "plan", label: "Plan", icon: "plan" },
+  { key: "tasks", label: "Tasks", icon: "tasks" },
+  { key: "volunteers", label: "Volunteers", icon: "people" },
+  { key: "blueprint", label: "Blueprint", icon: "map" },
+  { key: "chat", label: "Chat", icon: "chat" },
+];
+const TAB_KEYS: TabKey[] = ["plan", "tasks", "volunteers", "blueprint", "chat", "wrapup"];
+
+function parseRoute(loc: string): { eventId: number | null; tab: TabKey | null } {
+  const m = loc.match(/^\/app\/events\/(\d+)(?:\/([a-z]+))?/);
+  if (!m) return { eventId: null, tab: null };
+  const tab = (TAB_KEYS as string[]).includes(m[2] ?? "") ? (m[2] as TabKey) : null;
+  return { eventId: Number(m[1]), tab };
 }
 
-function UserMenu() {
+function eventInitials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase() || "EV";
+}
+
+function UserMenu({ side = "right" }: { side?: "right" | "top" }) {
   const { session, logout, loggingOut } = useEncore();
   const user = session?.user;
   if (!user) return null;
@@ -91,7 +74,7 @@ function UserMenu() {
           <Avatar name={user.name || user.email} size={32} />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="right" className="w-[240px] rounded-xl" style={{ background: "#FEFCF0" }}>
+      <DropdownMenuContent align="end" side={side} className="w-[240px] rounded-xl" style={{ background: "#FEFCF0" }}>
         <DropdownMenuLabel>
           <span className="block font-semibold">{user.name || "Organizer"}</span>
           <span className="block text-[12px] text-muted-ink font-normal">{user.email}</span>
@@ -105,79 +88,169 @@ function UserMenu() {
   );
 }
 
-function HelperButton({ event }: { event: ShellEvent }) {
+function EventRail({ activeId, tab, onAddSeries }: { activeId: number | null; tab: TabKey | null; onAddSeries: () => void }) {
+  const { selectedSeries } = useEncore();
+  const [loc] = useLocation();
+  const seriesId = selectedSeries?.id ?? 0;
+  const dash = useGetDashboard(seriesId, { query: { enabled: !!seriesId, queryKey: getGetDashboardQueryKey(seriesId) } });
+  const events = dash.data?.events ?? [];
+  const known = activeId == null || events.some((e) => e.id === activeId);
+  const newEventPath = selectedSeries ? `/app/series/${selectedSeries.id}/events/new` : null;
+  const targetTab = tab ?? "plan";
   return (
-    event ? (
-      <Link href={`/app/events/${event.id}/tasks`} className="rail-helper" aria-label="Ask the helper" data-testid="button-ask-helper"><Icon name="spark" size={20} /></Link>
+    <aside className="event-rail" aria-label="Events">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link href="/app" className="rail-home echo-hover" aria-label="Dashboard" aria-current={loc === "/app" ? "page" : undefined} data-active={loc === "/app"} data-testid="link-home"><EchoMark tone="dark" size={34} /></Link>
+        </TooltipTrigger>
+        <TooltipContent side="right">Dashboard</TooltipContent>
+      </Tooltip>
+      <div className="rail-divider" />
+      <nav className="event-rail-list" aria-label={selectedSeries ? `Events in ${selectedSeries.name}` : "Events"}>
+        {dash.isLoading && [0, 1, 2].map((i) => <span key={i} className="event-tile is-skeleton" aria-hidden="true" />)}
+        {!known && activeId != null && (
+          <span className="event-tile-wrap" data-active="true">
+            <Link href={`/app/events/${activeId}/${targetTab}`} className="event-tile" aria-current="page" aria-label="Current event" data-testid={`link-event-${activeId}`}>#</Link>
+          </span>
+        )}
+        {events.map((e) => {
+          const active = e.id === activeId;
+          return (
+            <Tooltip key={e.id}>
+              <TooltipTrigger asChild>
+                <span className="event-tile-wrap" data-active={active}>
+                  <Link href={`/app/events/${e.id}/${targetTab}`} className="event-tile" aria-label={e.name} aria-current={active ? "page" : undefined} data-testid={`link-event-${e.id}`}>{eventInitials(e.name)}</Link>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="right">{e.name}</TooltipContent>
+            </Tooltip>
+          );
+        })}
+        {dash.isError && <button type="button" className="event-tile is-disabled" onClick={() => void dash.refetch()} aria-label="Events did not load, retry" title="Retry">!</button>}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {newEventPath ? <Link href={newEventPath} className="rail-add" aria-label="Create new event" data-testid="button-rail-new-event"><Icon name="plus" size={19} /></Link> : <button type="button" className="rail-add" aria-label="Create a series" onClick={onAddSeries} data-testid="button-rail-new-event"><Icon name="plus" size={19} /></button>}
+          </TooltipTrigger>
+          <TooltipContent side="right">{newEventPath ? "Create new event" : "Create a series"}</TooltipContent>
+        </Tooltip>
+      </nav>
+      <div className="mt-auto flex flex-col items-center pt-2">
+        <div className="rail-divider" />
+        <UserMenu />
+      </div>
+    </aside>
+  );
+}
+
+function SectionNav({ eventId, eventName, tab, onNavigate, onNewSeries, onClose }: { eventId: number | null; eventName: string | null; tab: TabKey | null; onNavigate: () => void; onNewSeries: () => void; onClose: () => void }) {
+  const { toast } = useToast();
+  const [moreOpen, setMoreOpen] = useState(tab === "wrapup");
+  useEffect(() => { if (tab === "wrapup") setMoreOpen(true); }, [tab]);
+  const link = (key: TabKey, label: string, icon: "plan" | "tasks" | "people" | "map" | "chat" | "loop") =>
+    eventId ? (
+      <Link key={key} href={`/app/events/${eventId}/${key}`} onClick={onNavigate} className="section-item" aria-current={tab === key ? "page" : undefined} data-active={tab === key} data-testid={`nav-${key}`}>
+        <Icon name={icon} size={19} /><span>{label}</span>
+      </Link>
     ) : (
-      <button className="rail-helper is-disabled" disabled title="Open an event to ask the helper" aria-label="Ask the helper" data-testid="button-ask-helper"><Icon name="spark" size={20} /></button>
-    )
+      <button key={key} type="button" className="section-item is-disabled" aria-disabled="true" onClick={() => toast({ title: "Open an event first" })} data-testid={`nav-${key}-disabled`}>
+        <Icon name={icon} size={19} /><span>{label}</span>
+      </button>
+    );
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="px-3 pt-4 pb-3">
+        <div className="flex items-center justify-between mb-2 px-1"><span className="rail-label">Series</span><button type="button" className="section-close" onClick={onClose} aria-label="Close sections menu" data-testid="button-close-sections"><Icon name="x" size={18} /></button></div>
+        <SeriesSwitcher onNew={() => { onNavigate(); onNewSeries(); }} />
+      </div>
+      <div className="px-4 pb-3">
+        <div className="rail-label">Event</div>
+        <div className="section-event-name" data-testid="text-shell-event">{eventName ?? (eventId ? "Loading event" : "Pick an event")}</div>
+      </div>
+      <nav className="flex flex-col gap-1 px-2.5 overflow-y-auto min-h-0" aria-label="Event sections">
+        {PRIMARY_TABS.map((t) => link(t.key, t.label, t.icon))}
+        <button type="button" className="section-item" aria-expanded={moreOpen} aria-controls="section-more" onClick={() => setMoreOpen((v) => !v)} data-testid="button-nav-more">
+          <Icon name="chevron" size={19} style={{ transform: moreOpen ? "none" : "rotate(-90deg)", transition: "transform .15s" }} /><span>More</span>
+        </button>
+        {moreOpen && (
+          <div id="section-more" className="flex flex-col gap-1 pl-3">
+            {link("wrapup", "Wrap-up", "loop")}
+            <button type="button" className="section-item is-disabled" aria-disabled="true" onClick={() => toast({ title: "Sponsors is coming soon" })} data-testid="nav-sponsors-disabled">
+              <Icon name="tag" size={19} /><span>Sponsors</span><span className="section-soon">Soon</span>
+            </button>
+          </div>
+        )}
+      </nav>
+      <div className="mt-auto p-3">
+        {eventId ? (
+          <Link href={`/app/events/${eventId}/tasks`} onClick={onNavigate} className="section-helper" data-testid="button-ask-helper"><Icon name="spark" size={18} /><span>Ask the helper</span></Link>
+        ) : (
+          <button type="button" className="section-helper is-disabled" disabled title="Open an event to ask the helper" data-testid="button-ask-helper"><Icon name="spark" size={18} /><span>Ask the helper</span></button>
+        )}
+      </div>
+    </div>
   );
 }
 
 export function Shell({ event = null, children }: { event?: ShellEvent; children: ReactNode }) {
-  const { selectedSeries } = useEncore();
-  const [, navigate] = useLocation();
-  const newEventPath = selectedSeries ? `/app/series/${selectedSeries.id}/events/new` : null;
-  const shortName = event?.name.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase() || "EV";
+  const [loc, navigate] = useLocation();
+  const route = parseRoute(loc);
+  const eventId = route.eventId ?? event?.id ?? null;
+  const { selectedSeries, selectSeries } = useEncore();
+  const routeId = route.eventId ?? 0;
+  const bundle = useGetEvent(routeId, { query: { enabled: !!routeId, queryKey: getGetEventQueryKey(routeId) } });
+  const bundleSeriesId = bundle.data && bundle.data.event.id === routeId ? bundle.data.event.series_id : null;
+  useEffect(() => {
+    if (bundleSeriesId && bundleSeriesId !== selectedSeries?.id) selectSeries(bundleSeriesId);
+  }, [bundleSeriesId, selectedSeries?.id, selectSeries]);
+  const eventName = event && event.id === eventId ? event.name : bundle.data && bundle.data.event.id === eventId ? bundle.data.event.name : null;
+  const [seriesOpen, setSeriesOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const closeDrawer = (restore = true) => {
+    setDrawerOpen(false);
+    if (restore) requestAnimationFrame(() => toggleRef.current?.focus());
+  };
+  useEffect(() => { setDrawerOpen(false); }, [loc]);
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 900px)");
+    const onResize = () => { if (desktop.matches) setDrawerOpen(false); };
+    desktop.addEventListener("change", onResize);
+    return () => desktop.removeEventListener("change", onResize);
+  }, []);
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const el = drawerRef.current;
+    const focusables = () => Array.from(el?.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),[tabindex]:not([tabindex="-1"])') ?? []).filter((n) => n.offsetParent !== null);
+    requestAnimationFrame(() => (el?.querySelector<HTMLElement>(".section-close") ?? focusables()[0])?.focus());
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); setDrawerOpen(false); toggleRef.current?.focus(); return; }
+      if (e.key !== "Tab") return;
+      const f = focusables();
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !el?.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (document.activeElement === last || !el?.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
 
   return (
     <div className="min-h-[100dvh]">
       <Orbs />
-      {/* Slim floating navigation rail, 900px+ */}
-      <aside className="rail hidden min-[900px]:flex fixed left-3 top-3 bottom-3 w-[72px] rounded-[22px] flex-col items-center py-3 z-30 border border-white/10 overflow-x-hidden overflow-y-auto" aria-label="Encore navigation">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link href="/app" className="rail-home" aria-label="Dashboard" data-testid="link-home"><EchoMark tone="dark" size={34} /></Link>
-          </TooltipTrigger>
-          <TooltipContent side="right">Dashboard</TooltipContent>
-        </Tooltip>
-        <div className="rail-divider" />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {event ? <Link href={`/app/events/${event.id}/plan`} className="event-tile" aria-label={`Current event: ${event.name}`} title={event.name} data-testid="link-current-event">{shortName}</Link> : <button type="button" className="event-tile is-disabled" aria-label="No event open" disabled>No</button>}
-          </TooltipTrigger>
-          <TooltipContent side="right">{event?.name ?? "No event open"}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {newEventPath ? <Link href={newEventPath} className="rail-add" aria-label="Create new event" data-testid="button-rail-new-event"><Icon name="plus" size={19} /></Link> : <button type="button" className="rail-add is-disabled" aria-label="Create new event" disabled><Icon name="plus" size={19} /></button>}
-          </TooltipTrigger>
-          <TooltipContent side="right">Create new event</TooltipContent>
-        </Tooltip>
-        <div className="rail-divider" />
-        <NavList event={event} />
-        <div className="mt-auto flex flex-col items-center gap-3 pt-3">
-          <Tooltip>
-            <TooltipTrigger asChild><HelperButton event={event} /></TooltipTrigger>
-            <TooltipContent side="right">Ask the helper</TooltipContent>
-          </Tooltip>
-          <div className="rail-divider" />
-          <UserMenu />
-        </div>
+      <EventRail activeId={eventId} tab={route.tab} onAddSeries={() => setSeriesOpen(true)} />
+      <div className={`section-backdrop ${drawerOpen ? "is-open" : ""}`} onClick={() => closeDrawer()} aria-hidden="true" />
+      <aside ref={drawerRef} id="section-sidebar" className={`section-sidebar ${drawerOpen ? "is-open" : ""}`} aria-label="Event navigation" {...(drawerOpen ? { role: "dialog", "aria-modal": true } : {})}>
+        <SectionNav eventId={eventId} eventName={eventName} tab={route.tab} onNavigate={() => closeDrawer(false)} onNewSeries={() => setSeriesOpen(true)} onClose={() => closeDrawer()} />
       </aside>
-
-      {/* Compact bottom navigation on phones and tablets */}
-      <nav className="mobile-bottom-nav min-[900px]:hidden" aria-label="Mobile navigation">
-        <NavList event={event} mobile />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="bottom-nav-item" aria-label="More navigation" data-testid="button-mobile-more"><Icon name="chevron" size={21} /><span>More</span></button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" className="w-56 rounded-xl" style={{ background: "#FEFCF0" }}>
-            <DropdownMenuItem onSelect={() => navigate("/app")} className="cursor-pointer gap-2"><Icon name="home" size={16} /> Dashboard</DropdownMenuItem>
-            <DropdownMenuItem disabled className="gap-2"><Icon name="tag" size={16} /> Sponsors · coming soon</DropdownMenuItem>
-            {event && <DropdownMenuItem onSelect={() => navigate(`/app/events/${event.id}/wrapup`)} className="cursor-pointer gap-2"><Icon name="loop" size={16} /> Wrap-up</DropdownMenuItem>}
-            {newEventPath && <DropdownMenuItem onSelect={() => navigate(newEventPath)} className="cursor-pointer gap-2"><Icon name="plus" size={16} /> New event</DropdownMenuItem>}
-            <DropdownMenuSeparator />
-            <div className="flex items-center justify-between px-2 py-1.5"><span className="text-[12px] text-muted-ink">Account</span><UserMenu /></div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </nav>
-
-      <main className="relative px-4 pb-24 pt-5 min-[900px]:pl-[104px] min-[900px]:pr-7 min-[900px]:pt-7 min-[900px]:pb-12">
+      <main className="shell-main">
+        <button ref={toggleRef} type="button" className="section-toggle" aria-expanded={drawerOpen} aria-controls="section-sidebar" onClick={() => setDrawerOpen((v) => !v)} data-testid="button-toggle-sections">
+          <Icon name={drawerOpen ? "x" : "menu"} size={18} /><span>{eventName ?? "Sections"}</span>
+        </button>
         <div className="max-w-[1180px]">{children}</div>
       </main>
+      <CreateSeriesDialog open={seriesOpen} onOpenChange={setSeriesOpen} onCreated={() => navigate("/app")} />
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { useEncore } from "@/lib/session";
 import { errorMessage } from "@/lib/encore";
 import { Star } from "@/components/brand";
 
-export function CreateSeriesDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function CreateSeriesDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (v: boolean) => void; onCreated?: () => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -29,6 +29,7 @@ export function CreateSeriesDialog({ open, onOpenChange }: { open: boolean; onOp
           toast({ title: "Series created", description: s.name });
           setName(""); setDescription("");
           onOpenChange(false);
+          onCreated?.();
         },
         onError: (er) => setErr(errorMessage(er)),
       },
