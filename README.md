@@ -83,7 +83,7 @@ The API self-test runs phase checks in order and deletes its own randomized fict
 - Private reminder drafts with sending off and idempotent fictional demo loading.
 - Organizer chat polling cursors, message-length and ownership checks, soft-delete updates, cross-session persistence and per-user rate limits; announcement length, history/latest replacement, and the private volunteer/map response shape.
 
-These are API integration checks, not an end-to-end browser certification. The complete authenticated-browser checklist (including drag/touch interactions and every authenticated screen at both 375px and 1280px) remains a release gate. Do not treat a typecheck as proof of those interactions.
+These are API integration checks, not an end-to-end browser certification. The authenticated Plan, Wrap-up, dashboard, task board and navigation pass at 375px and 1280px is recorded below. Other signed-in surfaces still need their own checks before the full PRD 0.6 release gate is cleared.
 
 ### v2.1 Tier 1 status
 
@@ -113,6 +113,10 @@ The current account model gives each series one owner, so chat access is scoped 
 
 Event-editor/task-board regression verification also passed all four API phases, the full typecheck and the frontend production build. A signed-in browser pass at 1280px verified event editing, save/cancel, reload persistence, pointer-dragging dated tasks through all three columns, same-column reordering and the Status selector. At 375px it verified the scrollable editor, accessible save/cancel controls, status changes and no horizontal overflow. Touch-hold dragging was not exercised because the test browser lacks touch emulation; this is not a claim that the entire PRD 0.6 release gate has passed.
 
+Authenticated-screen verification on November 23, 2026 used the fictional Calgary Builder Nights demo. Plan, Wrap-up, dashboard, task board and navigation were reviewed at 375px and 1280px with no horizontal overflow. Desktop navigation and the mobile More menu both navigated correctly; desktop pointer drag and mobile touch-hold drag moved tasks between columns. Changing the event date showed the due-date confirmation, shifted unfinished task dates and preserved completed dates. Reducing a full volunteer role below its signup count was blocked, and the old `/recap` route redirected to `/wrapup`.
+
+The first dashboard request exposed an outdated development database schema; the documented additive `db:setup:dev` step restored the missing development columns. The API self-test then passed phases 0–4. The Encore typecheck still reports pre-existing generated API-client type drift across the event editor, Blueprint, Chat, Plan, and volunteer screens; the generated client needs to be brought in sync as part of the queued core-check work.
+
 ## Decisions
 
 1. **Source precedence:** supplied original screen assets/HTML govern appearance; the PRD governs behavior. Exact Young Serif, Figtree and DM Mono fonts and the supplied Echo logo are used.
@@ -125,7 +129,7 @@ Event-editor/task-board regression verification also passed all four API phases,
 8. **Dates:** default America/Edmonton and CAD. Event instants are stored in UTC; task due dates remain `YYYY-MM-DD` calendar strings, including when read from PostgreSQL. Task due offsets and event-day switching use the event's timezone, not the browser's timezone. Editing an event preserves its tasks, signups, and public/private links. On a date change, the organizer can choose to shift unfinished task deadlines by the event-local calendar-day change; completed task deadlines stay unchanged, and the plan is not redrafted.
 9. **Attendance is typed and aggregate-only:** no attendee records are collected. A zero registered count has no computable show rate.
 10. **Safe reminder sharing:** a general draft can be shared with a group; individualized drafts must be sent separately so private tokens stay private.
-11. **Scope gate:** the assigned v2.1 Tier 1 is complete, but no later tier is started here. The full PRD 0.6 authenticated-browser checklist remains a release gate before starting the next tier. The supplied flow-map HTML is documentation only, not an app screen.
+11. **Scope gate:** the assigned v2.1 Tier 1 is complete, but no later tier is started here. The Task 8 authenticated-screen pass is complete; the broader PRD 0.6 cross-surface check remains a release gate before starting the next tier. The supplied flow-map HTML is documentation only, not an app screen.
 12. **Fictional demo only:** relative dates keep the demo's Spring Mixer upcoming. Real event data must be entered manually after publishing; it is not in seeds.
 
 ## Publishing
