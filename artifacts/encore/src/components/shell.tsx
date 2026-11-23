@@ -51,6 +51,7 @@ const PRIMARY_TABS: { key: TabKey; label: string; icon: "plan" | "tasks" | "peop
   { key: "chat", label: "Chat", icon: "chat" },
 ];
 const TAB_KEYS: TabKey[] = ["plan", "tasks", "volunteers", "blueprint", "chat", "wrapup"];
+const SECTION_SIDEBAR_KEY = "encore.section-sidebar-collapsed";
 
 function parseRoute(loc: string): { eventId: number | null; tab: TabKey | null } {
   const m = loc.match(/^\/app\/events\/(\d+)(?:\/([a-z]+))?/);
@@ -88,7 +89,7 @@ function UserMenu({ side = "right" }: { side?: "right" | "top" }) {
   );
 }
 
-function EventRail({ activeId, tab, onAddSeries }: { activeId: number | null; tab: TabKey | null; onAddSeries: () => void }) {
+function EventRail({ activeId, tab, onAddSeries, onDashboard }: { activeId: number | null; tab: TabKey | null; onAddSeries: () => void; onDashboard: () => void }) {
   const { selectedSeries } = useEncore();
   const [loc] = useLocation();
   const seriesId = selectedSeries?.id ?? 0;
@@ -101,7 +102,7 @@ function EventRail({ activeId, tab, onAddSeries }: { activeId: number | null; ta
     <aside className="event-rail" aria-label="Events">
       <Tooltip>
         <TooltipTrigger asChild>
-          <Link href="/app" className="rail-home echo-hover" aria-label="Dashboard" aria-current={loc === "/app" ? "page" : undefined} data-active={loc === "/app"} data-testid="link-home"><EchoMark tone="dark" size={34} /></Link>
+          <Link href="/app" onClick={onDashboard} className="rail-home echo-hover" aria-label="Dashboard" aria-current={loc === "/app" ? "page" : undefined} data-active={loc === "/app"} data-testid="link-home"><EchoMark tone="dark" size={34} /></Link>
         </TooltipTrigger>
         <TooltipContent side="right">Dashboard</TooltipContent>
       </Tooltip>
@@ -204,12 +205,24 @@ export function Shell({ event = null, children }: { event?: ShellEvent; children
   }, [bundleSeriesId, selectedSeries?.id, selectSeries]);
   const eventName = event && event.id === eventId ? event.name : bundle.data && bundle.data.event.id === eventId ? bundle.data.event.name : null;
   const [seriesOpen, setSeriesOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem(SECTION_SIDEBAR_KEY) === "true");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const closeDrawer = (restore = true) => {
     setDrawerOpen(false);
     if (restore) requestAnimationFrame(() => toggleRef.current?.focus());
+  };
+  const collapseSidebar = () => {
+    localStorage.setItem(SECTION_SIDEBAR_KEY, "true");
+    setSidebarCollapsed(true);
+  };
+  const toggleSidebar = () => {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      localStorage.setItem(SECTION_SIDEBAR_KEY, String(next));
+      return next;
+    });
   };
   useEffect(() => { setDrawerOpen(false); }, [loc]);
   useEffect(() => {
@@ -239,12 +252,15 @@ export function Shell({ event = null, children }: { event?: ShellEvent; children
   return (
     <div className="min-h-[100dvh]">
       <Orbs />
-      <EventRail activeId={eventId} tab={route.tab} onAddSeries={() => setSeriesOpen(true)} />
+      <EventRail activeId={eventId} tab={route.tab} onAddSeries={() => setSeriesOpen(true)} onDashboard={collapseSidebar} />
       <div className={`section-backdrop ${drawerOpen ? "is-open" : ""}`} onClick={() => closeDrawer()} aria-hidden="true" />
-      <aside ref={drawerRef} id="section-sidebar" className={`section-sidebar ${drawerOpen ? "is-open" : ""}`} aria-label="Event navigation" {...(drawerOpen ? { role: "dialog", "aria-modal": true } : {})}>
+      <aside ref={drawerRef} id="section-sidebar" className={`section-sidebar ${sidebarCollapsed ? "is-collapsed" : ""} ${drawerOpen ? "is-open" : ""}`} aria-label="Event navigation" {...(drawerOpen ? { role: "dialog", "aria-modal": true } : {})}>
         <SectionNav eventId={eventId} eventName={eventName} tab={route.tab} onNavigate={() => closeDrawer(false)} onNewSeries={() => setSeriesOpen(true)} onClose={() => closeDrawer()} />
+        <button type="button" className="sidebar-collapse-toggle" aria-label={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"} aria-expanded={!sidebarCollapsed} aria-controls="section-sidebar" onClick={toggleSidebar} data-testid="button-toggle-sidebar">
+          <Icon name="chevron" size={17} />
+        </button>
       </aside>
-      <main className="shell-main">
+      <main className="shell-main" data-sidebar-collapsed={sidebarCollapsed}>
         <button ref={toggleRef} type="button" className="section-toggle" aria-expanded={drawerOpen} aria-controls="section-sidebar" onClick={() => setDrawerOpen((v) => !v)} data-testid="button-toggle-sections">
           <Icon name={drawerOpen ? "x" : "menu"} size={18} /><span>{eventName ?? "Sections"}</span>
         </button>
