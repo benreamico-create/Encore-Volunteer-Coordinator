@@ -61,24 +61,6 @@ export function errorMessage(err: unknown, fallback = "Something went wrong. Ple
 }
 export const errorStatus = (err: unknown) => (err as { status?: number } | null)?.status;
 
-export function logFetchError(label: string, err: unknown) {
-  const error = err as {
-    message?: string;
-    method?: string;
-    url?: string;
-    status?: number;
-    statusText?: string;
-  } | null;
-  const url = error?.url ? error.url.split("?")[0] : undefined;
-  console.log(`[Encore] ${label} fetch failed`, {
-    method: error?.method ?? "GET",
-    url,
-    status: error?.status ?? null,
-    statusText: error?.statusText ?? null,
-    message: error?.message ?? String(err),
-  });
-}
-
 export const GROUPS = ["Venue and logistics", "Volunteers", "Promotion", "Event day", "Follow-up"];
 
 const PASTELS = ["#E7DDB8", "#D6E2B8", "#E9D0C2", "#CFDCD6", "#E2D6E6", "#F0E2A8", "#D9D2C2"];

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,7 +9,7 @@ import { Shell, PageHeader, SeriesSwitcher } from "@/components/shell";
 import { CreateSeriesDialog } from "@/components/create-series-dialog";
 import { EchoMark, ErrorPanel, Icon, Skel, Star } from "@/components/brand";
 import { useEncore } from "@/lib/session";
-import { errorMessage, fmtDate, fmtTime, logFetchError } from "@/lib/encore";
+import { errorMessage, fmtDate, fmtTime } from "@/lib/encore";
 import { useToast } from "@/hooks/use-toast";
 
 function StatusChip({ e }: { e: Event }) {
@@ -165,10 +165,6 @@ export default function DashboardPage() {
   const [newSeriesOpen, setNewSeriesOpen] = useState(false);
   const id = selectedSeries?.id ?? 0;
   const dash = useGetDashboard(id, { query: { enabled: !!id, queryKey: getGetDashboardQueryKey(id) } });
-
-  useEffect(() => {
-    if (dash.isError) logFetchError("Dashboard", dash.error);
-  }, [dash.isError, dash.error]);
 
   let body;
   let currentEvent: { id: number; name: string } | null = null;

@@ -364,12 +364,33 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { credentials: "same-origin", ...init, method, headers });
+  try {
+    const response = await fetch(input, { credentials: "same-origin", ...init, method, headers });
 
-  if (!response.ok) {
-    const errorData = await parseErrorBody(response, method);
-    throw new ApiError(response, errorData, requestInfo);
+    if (!response.ok) {
+      const errorData = await parseErrorBody(response, method);
+      throw new ApiError(response, errorData, requestInfo);
+    }
+
+    return (await parseSuccessBody(response, responseType, requestInfo)) as T;
+  } catch (error) {
+    // Log metadata, never request/response bodies, headers, query parameters,
+    // or private volunteer tokens. Preserve the original error for React Query.
+    if (typeof window !== "undefined" && !(error instanceof Error && error.name === "AbortError")) {
+      const path = requestInfo.url.split(/[?#]/)[0]
+        .replace(/(\/(?:public\/)?v\/)[^/]+/g, "$1[private]");
+      console.log("[Encore API] Request failed", {
+        method,
+        path,
+        status: error instanceof ApiError || error instanceof ResponseParseError ? error.status : null,
+        kind: error instanceof Error ? error.name : "UnknownError",
+        reason: error instanceof ApiError
+          ? `HTTP ${error.status} ${error.statusText}`
+          : error instanceof ResponseParseError
+            ? "Response was not valid JSON"
+            : "Network request failed",
+      });
+    }
+    throw error;
   }
-
-  return (await parseSuccessBody(response, responseType, requestInfo)) as T;
 }
