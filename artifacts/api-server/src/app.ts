@@ -55,7 +55,13 @@ app.use("/api", recapsRouter, demoRouter);
 const errors: ErrorRequestHandler = (err, req, res, _next) => {
   if (err.name === "ZodError") { res.status(400).json({error:"Please check the required fields and their values."}); return; }
   if (err instanceof HttpError) { res.status(err.status).json({error:err.message}); return; }
-  req.log.error({name:err.name,code:err.code}, "Request failed");
+  req.log.error({
+    name: err.name,
+    code: err.code,
+    message: err.message,
+    column: err.column,
+    table: err.table,
+  }, "Request failed");
   res.status(500).json({error:"Something went wrong. Please try again."});
 };
 app.use(errors);
