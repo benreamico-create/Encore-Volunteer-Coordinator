@@ -7,6 +7,7 @@ import { HttpError, id, one, rows, required, transaction } from "../lib/store";
 import { bundle, dueFromOffset, eventSummary, insertEvent, ownedEvent, recapData, wire } from "../lib/events";
 import { saveRecapData, starterTemplate } from "../lib/recaps";
 import { draft } from "../lib/ai";
+import { emailEnabled } from "../lib/email";
 
 const router=Router();
 router.put("/events/:id/recap",async(req,res)=>{
@@ -95,9 +96,9 @@ router.get("/events/:id/reminder",async(req,res)=>{
   const origin=`${req.protocol}://${req.get("host")}`;
   const blocks=data.volunteers.filter(v=>v.status==="confirmed").map(v=>{
     const role=data.roles.find(r=>r.id===v.role_id);
-    return {name:v.name,email:v.email_consent?v.email:null,message:`Hi ${v.name}, a reminder that ${event.name} is on ${date} at ${time} at ${event.place_text||event.city||"the place shown on your private page"}. You are on ${role?.name||"the team"}. Your page with the details is ${origin}/v/${v.token}. Reply if anything changes. Thank you for helping. — ${owner.name}`};
+     return {id:v.id,name:v.name,email:v.email_consent?v.email:null,message:`Hi ${v.name}, a reminder that ${event.name} is on ${date} at ${time} at ${event.place_text||event.city||"the place shown on your private page"}. You are on ${role?.name||"the team"}. Your page with the details is ${origin}/v/${v.token}. Reply if anything changes. Thank you for helping. — ${owner.name}`};
   });
   const general=`A reminder that ${event.name} is on ${date} at ${time} at ${event.place_text||event.city||"the place shown on your private page"}. Please review your role and your private page. Reply if anything changes. Thank you for helping. — ${owner.name}`;
-  res.json({message:general,drafts:blocks,recipients:data.volunteers.filter(v=>v.email_consent&&v.email&&v.status==="confirmed").map(v=>v.email),email_enabled:false,notice:"AI is not configured, so here is a template. Sending is off; copy each person's message privately."});
+  res.json({message:general,drafts:blocks.map((v)=>({id:v.id,name:v.name,email:v.email,message:v.message})),recipients:data.volunteers.filter(v=>v.email_consent&&v.email&&v.status==="confirmed").map(v=>v.email),email_enabled:emailEnabled(),notice:emailEnabled()?"Review the recipient count and message before sending. Private links are only included in individual messages.":"Email sending is off. Copy the message or open it in your own mail app."});
 });
 export default router;

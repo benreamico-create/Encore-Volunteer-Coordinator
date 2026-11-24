@@ -7,6 +7,7 @@
  */
 
 export interface ReminderDraft {
+  id: number;
   name: string;
   message: string;
   /** @nullable */

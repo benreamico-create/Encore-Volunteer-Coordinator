@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent, type KeyboardEventHandler, type MouseEventHandler, type TouchEventHandler } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEventHandler, type MouseEventHandler, type TouchEventHandler } from "react";
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, KeyboardSensor, useSensor, useSensors, closestCorners, pointerWithin, type DragEndEvent, type CollisionDetection } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -150,6 +150,7 @@ function TaskCard({ b, t, index, colLen, onMove, onReorder, onEdit, onAssign, on
       ref={setNodeRef} onMouseDown={onMouseDown}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }}
       className={`glass !p-3.5 cursor-grab active:cursor-grabbing transition-shadow ${isDragging ? "shadow-xl" : ""}`}
+      tabIndex={-1}
       data-testid={`card-task-${t.id}`}
     >
       <div className="flex items-start gap-2">
@@ -249,6 +250,12 @@ export default function TasksPage() {
   );
 
   const b = q.data;
+  useEffect(()=>{
+    const target=Number(new URLSearchParams(window.location.search).get("task"));
+    if(!target||!b?.tasks.some((task)=>task.id===target))return;
+    const timer=window.setTimeout(()=>{const card=document.querySelector<HTMLElement>(`[data-testid="card-task-${target}"]`);card?.scrollIntoView({behavior:"smooth",block:"center"});card?.focus({preventScroll:true});},100);
+    return()=>window.clearTimeout(timer);
+  },[b?.tasks]);
   const columns = useMemo(() => {
     const m: Record<TaskStatus, Task[]> = { todo: [], doing: [], done: [] };
     for (const t of b?.tasks ?? []) (m[t.status] ?? m.todo).push(t);

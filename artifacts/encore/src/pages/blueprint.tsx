@@ -48,9 +48,12 @@ export default function BlueprintPage() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [detailDraft, setDetailDraft] = useState({ label: "", vendor_name: "", needs_text: "", role_id: "" });
   const [uploading, setUploading] = useState(false);
+  const [hintRole,setHintRole]=useState("");
   const items = mapQuery.data?.items ?? [];
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const roles = bundle.data?.roles ?? [];
+  const resources=bundle.data?.resources??[];
+  const vendorResources=resources.filter((r)=>r.kind==="vendor");
   const imageRatio = useMemo(() => {
     const m = mapQuery.data?.map;
     return m?.image_width && m?.image_height ? m.image_width / m.image_height : 1.45;
@@ -58,10 +61,26 @@ export default function BlueprintPage() {
   const key = getGetEventMapQueryKey(id);
   const refresh = () => qc.invalidateQueries({ queryKey: key });
   const fail = (title: string) => (e: unknown) => toast({ title, description: errorMessage(e), variant: "destructive" });
+  const booths=items.filter((item)=>item.kind==="booth");
+  const stations=items.filter((item)=>item.kind==="station");
+  const unplacedBooths=booths.filter((booth)=>!booth.vendor_name);
+  const unservedBooths=booths.filter((booth)=>{
+    const bx=booth.x_pct+booth.w_pct/2,by=booth.y_pct+booth.h_pct/2;
+    return !stations.some((station)=>{
+      const sx=station.x_pct+station.w_pct/2,sy=station.y_pct+station.h_pct/2;
+      return Math.hypot(bx-sx,(by-sy)/imageRatio)<=25;
+    });
+  });
+  const placedResourceIds=new Set(items.map((item)=>item.resource_id).filter(Boolean));
+  const unplacedResources=vendorResources.filter((resource)=>!placedResourceIds.has(resource.id));
 
   useEffect(() => {
     if (selectedId !== null && !items.some((item) => item.id === selectedId)) setSelectedId(null);
   }, [items, selectedId]);
+  useEffect(()=>{
+    const target=Number(new URLSearchParams(window.location.search).get("item"));
+    if(target&&items.some((item)=>item.id===target))setSelectedId(target);
+  },[items]);
   useEffect(() => {
     if (selected) setDetailDraft({ label: selected.label, vendor_name: selected.vendor_name ?? "", needs_text: selected.needs_text ?? "", role_id: selected.role_id ? String(selected.role_id) : "" });
   }, [selected?.id]);
@@ -102,6 +121,25 @@ export default function BlueprintPage() {
     if (selected.kind === "station" && detailDraft.role_id !== String(selected.role_id ?? "")) patch.role_id = detailDraft.role_id ? Number(detailDraft.role_id) : null;
     if (!Object.keys(patch).length) return;
     updateItem.mutate({ id, itemId: selected.id, data: patch }, { onSuccess: refresh, onError: fail("Could not save item") });
+  };
+  const placeResource=(booth:MapItem,resourceId:number)=>{
+    if(booth.vendor_name)return;
+    const resource=vendorResources.find((item)=>item.id===resourceId);
+    if(!resource)return;
+    updateItem.mutate({id,itemId:booth.id,data:{vendor_name:resource.name,resource_id:resource.id}},{
+      onSuccess:()=>{setSelectedId(booth.id);refresh();toast({title:"Vendor placed",description:`${resource.name} is now on ${booth.label}.`});},
+      onError:fail("Could not place vendor"),
+    });
+  };
+  const addHintPost=async()=>{
+    const booth=unservedBooths[0],role=roles.find((r)=>r.id===Number(hintRole));
+    if(!booth||!role)return;
+    try{
+      if(!mapQuery.data?.map)await saveMap.mutateAsync({id,data:{source:"blank"}});
+      const x=clamp(booth.x_pct+booth.w_pct/2-5,0,88),y=clamp(booth.y_pct+booth.h_pct+3,0,92);
+      const created=await createItem.mutateAsync({id,data:{kind:"station",label:`Post · ${role.name}`,x_pct:x,y_pct:y,w_pct:12,h_pct:7,vendor_name:null,needs_text:null,role_id:role.id}});
+      await refresh();setSelectedId(created.id);toast({title:"Volunteer post added",description:`${role.name} is now near ${booth.label}.`});
+    }catch(error){fail("Could not add volunteer post")(error);}
   };
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>, item?: MapItem, resize = false) => {
     if (e.button !== 0) return;
@@ -252,7 +290,7 @@ export default function BlueprintPage() {
                 const rect = previewRect && selectedId === item.id ? previewRect : previewRect && gesture.current?.item?.id === item.id ? previewRect : null;
                 const x = rect?.x ?? item.x_pct, y = rect?.y ?? item.y_pct, w = rect?.w ?? item.w_pct, h = rect?.h ?? item.h_pct;
                 return (
-                  <div key={item.id} className={`blueprint-item map-${item.kind} ${item.kind === "booth" && !item.vendor_name ? "is-empty-booth" : ""} ${selectedId === item.id ? "is-selected" : ""}`} style={{ left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` }} onPointerDown={(e) => { e.stopPropagation(); onPointerDown(e, item); }} onFocus={() => setSelectedId(item.id)} tabIndex={0} data-testid={`map-item-${item.id}`} role="button" aria-label={`${item.kind}: ${item.label}`} aria-pressed={selectedId === item.id}>
+                  <div key={item.id} className={`blueprint-item map-${item.kind} ${item.kind === "booth" && !item.vendor_name ? "is-empty-booth" : ""} ${selectedId === item.id ? "is-selected" : ""}`} style={{ left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` }} onPointerDown={(e) => { e.stopPropagation(); onPointerDown(e, item); }} onFocus={() => setSelectedId(item.id)} onDragOver={(e)=>{if(item.kind==="booth"&&!item.vendor_name)e.preventDefault();}} onDrop={(e)=>{if(item.kind!=="booth"||item.vendor_name)return;e.preventDefault();const resourceId=Number(e.dataTransfer.getData("text/plain"));if(resourceId)placeResource(item,resourceId);}} tabIndex={0} data-testid={`map-item-${item.id}`} role="button" aria-label={`${item.kind}: ${item.label}`} aria-pressed={selectedId === item.id}>
                     <span className="truncate">{item.kind === "booth" && item.vendor_name ? item.vendor_name : item.label}</span>
                     {selectedId === item.id && <button type="button" className="map-resize-handle" aria-label={`Resize ${item.label}`} onPointerDown={(e) => { e.stopPropagation(); onPointerDown(e, item, true); }} data-testid={`button-resize-${item.id}`} />}
                   </div>
@@ -272,6 +310,17 @@ export default function BlueprintPage() {
             </div>
             <button className="btn btn-secondary w-full mt-3" onClick={() => void create(tool === "select" ? "booth" : tool as MapItem["kind"])} disabled={tool !== "select" && (createItem.isPending || saveMap.isPending)} data-testid="button-add-item"><Icon name="plus" size={15} /> Add {tool === "select" ? "item" : tool}</button>
           </section>
+          {(unplacedBooths.length>0||unservedBooths.length>0)&&<section className="ai-glass !p-4" data-testid="panel-map-hints">
+            <div className="mono-label mb-2">Map checks</div>
+            {unplacedBooths.length>0&&<p className="text-[13px] mb-2">{unplacedBooths.length} empty booth{unplacedBooths.length===1?"":"s"}. Drag a saved vendor onto an empty booth.</p>}
+            {unservedBooths.length>0&&<div className="space-y-2"><p className="text-[13px]">{unservedBooths.length} booth{unservedBooths.length===1?" has":"s have"} no volunteer post within about a quarter of the map width.</p>
+              {roles.length>0&&<div className="flex gap-2"><select className="field field-compact min-w-0" value={hintRole} onChange={(e)=>setHintRole(e.target.value)} aria-label="Role for new volunteer post" data-testid="select-hint-role"><option value="">Choose a role</option>{roles.map((r)=><option key={r.id} value={r.id}>{r.name}</option>)}</select><button className="btn btn-secondary btn-sm shrink-0" onClick={()=>void addHintPost()} disabled={!hintRole||createItem.isPending} data-testid="button-add-hint-post">Add post</button></div>}
+            </div>}
+          </section>}
+          {unplacedResources.length>0&&<section className="glass !p-4" data-testid="panel-unplaced-vendors">
+            <div className="mono-label mb-2">Saved vendor resources</div><p className="text-[12px] text-muted-ink mb-2">Drag one onto an empty booth.</p>
+            <div className="space-y-2">{unplacedResources.map((r)=><div key={r.id} draggable onDragStart={(e)=>e.dataTransfer.setData("text/plain",String(r.id))} className="rounded-xl px-3 py-2 text-[13px] border border-dashed cursor-grab active:cursor-grabbing" style={{borderColor:"rgba(55,68,46,.32)",background:"rgba(255,255,255,.55)"}} data-testid={`resource-unplaced-${r.id}`}><span className="font-semibold">{r.name}</span>{r.note&&<span className="block text-[11px] text-muted-ink truncate">{r.note}</span>}</div>)}</div>
+          </section>}
           <section className="glass !p-4">
             <div className="mono-label mb-3">Background</div>
             <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="sr-only" aria-label="Upload a map image" onChange={(e) => void uploadImage(e.target.files?.[0])} data-testid="input-map-upload" />
@@ -292,6 +341,7 @@ export default function BlueprintPage() {
             <input id="map-item-label" className="field field-compact mb-3" value={detailDraft.label} maxLength={120} onChange={(e) => setDetailDraft((d) => ({ ...d, label: e.target.value }))} data-testid="input-item-label" />
             {selected.kind === "booth" && <>
               <label className="field-label" htmlFor="map-item-vendor">Vendor</label><input id="map-item-vendor" className="field field-compact mb-3" value={detailDraft.vendor_name} maxLength={160} onChange={(e) => setDetailDraft((d) => ({ ...d, vendor_name: e.target.value }))} placeholder="Vendor name" data-testid="input-item-vendor" />
+              {unplacedResources.length>0&&<select className="field field-compact mb-3" aria-label="Place saved vendor resource" defaultValue="" onChange={(e)=>{const rid=Number(e.target.value);if(rid)placeResource(selected,rid);}} data-testid="select-place-vendor"><option value="">Choose saved resource…</option>{unplacedResources.map((r)=><option key={r.id} value={r.id}>{r.name}</option>)}</select>}
               <label className="field-label" htmlFor="map-item-needs">Needs</label><textarea id="map-item-needs" className="field field-compact" rows={2} value={detailDraft.needs_text} maxLength={1000} onChange={(e) => setDetailDraft((d) => ({ ...d, needs_text: e.target.value }))} placeholder="Power, table, access…" data-testid="input-item-needs" />
             </>}
             {selected.kind === "station" && <><label className="field-label" htmlFor="map-item-role">Volunteer role</label><select id="map-item-role" className="field field-compact" value={detailDraft.role_id} onChange={(e) => setDetailDraft((d) => ({ ...d, role_id: e.target.value }))} data-testid="select-item-role"><option value="">No linked role</option>{roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></>}

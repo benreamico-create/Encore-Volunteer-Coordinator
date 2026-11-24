@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useLogIn, useSignUp, getGetSessionQueryKey, type SessionInfo } from "@workspace/api-client-react";
+import { useLogIn, useSignUp, useRequestPasswordReset, useConfirmPasswordReset, getGetSessionQueryKey, type SessionInfo } from "@workspace/api-client-react";
 import { EchoMark, Orbs, Star, Wordmark, Icon } from "@/components/brand";
 import { errorMessage, errorStatus } from "@/lib/encore";
 import { useToast } from "@/hooks/use-toast";
+import { useEncore } from "@/lib/session";
 
 type Mode = "signup" | "login";
 type Errors = Partial<Record<"name" | "email" | "password" | "form", string>>;
@@ -19,9 +20,18 @@ export default function AuthPage() {
   const qc = useQueryClient();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { session } = useEncore();
   const signUp = useSignUp();
   const logIn = useLogIn();
-  const pending = signUp.isPending || logIn.isPending;
+  const resetRequest = useRequestPasswordReset();
+  const resetConfirm = useConfirmPasswordReset();
+  const resetToken = new URLSearchParams(window.location.search).get("reset");
+  const inviteToken = new URLSearchParams(window.location.search).get("invite");
+  const authError = new URLSearchParams(window.location.search).get("auth_error");
+  const [resetMode, setResetMode] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+  const [resetPassword, setResetPassword] = useState("");
+  const pending = signUp.isPending || logIn.isPending || resetRequest.isPending || resetConfirm.isPending;
 
   const onDone = (s: SessionInfo) => {
     qc.clear();
@@ -90,7 +100,13 @@ export default function AuthPage() {
           <section className="relative rise" style={{ animationDelay: "160ms" }}>
             <Star size={16} className="absolute -top-3 -left-2 z-10" />
             <Star size={12} className="absolute -bottom-2 right-8 z-10" style={{ animationDelay: "1.6s" }} />
-            <form onSubmit={submit} noValidate className="glass !p-7 md:!p-8" data-testid="form-auth">
+     {resetToken ? <form className="glass !p-7 md:!p-8" onSubmit={(e) => { e.preventDefault(); resetConfirm.mutate({data:{token:resetToken,password:resetPassword}},{onSuccess:()=>{setResetDone(true);window.history.replaceState({}, "", "/");},onError:(e)=>setErrors({form:errorMessage(e)})}); }}>
+        <h2 className="font-display text-[26px] mb-2">{resetDone ? "Password updated" : "Choose a new password"}</h2>
+        {resetDone ? <p className="text-muted-ink">Your password has been changed. Sign in with your new password.</p> : <>
+          <label className="field-label" htmlFor="new-password">New password</label><input id="new-password" className="field mb-4" type="password" minLength={8} value={resetPassword} onChange={(e)=>setResetPassword(e.target.value)} />
+          {errors.form&&<p className="field-error">{errors.form}</p>}<button className="btn btn-primary w-full mt-4" disabled={pending||resetPassword.length<8}>Set password</button>
+        </>}
+      </form> : <form onSubmit={resetMode ? (e)=>{e.preventDefault();resetRequest.mutate({data:{email:email.trim()}},{onSuccess:(r)=>{setResetDone(true);setErrors({form:r.message});},onError:(e)=>setErrors({form:errorMessage(e)})});} : submit} noValidate className="glass !p-7 md:!p-8" data-testid="form-auth">
               <div className="flex p-1 rounded-full mb-6" style={{ background: "rgba(55,68,46,0.07)" }} role="tablist">
                 {(["signup", "login"] as Mode[]).map((m) => (
                   <button
@@ -103,11 +119,11 @@ export default function AuthPage() {
                   </button>
                 ))}
               </div>
-              <h2 className="font-display text-[26px] leading-tight mb-1">{mode === "signup" ? "Create your team space" : "Welcome back"}</h2>
-              <p className="text-muted-ink text-[14px] mb-6">{mode === "signup" ? "Free while you try it. No card needed." : "Pick up where you left off."}</p>
+              <h2 className="font-display text-[26px] leading-tight mb-1">{resetMode ? "Reset your password" : mode === "signup" ? "Create your team space" : "Welcome back"}</h2>
+              <p className="text-muted-ink text-[14px] mb-6">{resetMode ? session?.email_enabled ? "We’ll send a one-time reset link if the email matches an account." : "Email resets are off. Ask the administrator to reset your password." : mode === "signup" ? "Free while you try it. No card needed." : "Pick up where you left off."}</p>
 
               <div className="space-y-4">
-                {mode === "signup" && (
+                {!resetMode && mode === "signup" && (
                   <div>
                     <label className="field-label" htmlFor="name">Your name</label>
                     <input id="name" className="field" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} aria-invalid={!!errors.name} placeholder="Your first name is fine" data-testid="input-name" />
@@ -119,7 +135,7 @@ export default function AuthPage() {
                   <input id="email" type="email" className="field" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} aria-invalid={!!errors.email} placeholder="you@example.ca" data-testid="input-email" />
                   {errors.email && <p className="field-error">{errors.email}</p>}
                 </div>
-                <div>
+                {!resetMode && <div>
                   <label className="field-label" htmlFor="password">Password</label>
                   <div className="relative">
                     <input id="password" type={showPw ? "text" : "password"} className="field pr-20" autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} maxLength={128} aria-invalid={!!errors.password} placeholder="At least 8 characters" data-testid="input-password" />
@@ -128,25 +144,31 @@ export default function AuthPage() {
                     </button>
                   </div>
                   {errors.password && <p className="field-error">{errors.password}</p>}
-                </div>
+                </div>}
               </div>
 
+              {authError && <div className="mt-4 rounded-xl px-4 py-3 text-[14px]" style={{ background:"rgba(166,64,47,.08)",color:"#8A3426" }} role="alert">{authError==="google_cancelled"?"Google sign-in was cancelled. You can try again.":authError==="google_unavailable"?"Google sign-in is not configured yet.":"Google sign-in could not finish. Please try again."}</div>}
+              {inviteToken && <div className="mt-3 text-[13px] text-muted-ink" role="status">Sign in or create an account to join the invited event team.</div>}
               {errors.form && (
                 <div className="mt-5 rounded-xl px-4 py-3 text-[14px]" style={{ background: "rgba(166,64,47,0.08)", color: "#8A3426" }} role="alert" data-testid="text-auth-error">
                   {errors.form}
                 </div>
               )}
 
+              {!resetMode && session?.google_enabled && <a href="/api/auth/google" className="btn btn-secondary w-full mt-5" data-testid="button-google-signin">
+                <span className="font-semibold text-[#4285F4]" aria-hidden="true">G</span> Continue with Google
+              </a>}
               <div className="mt-6 flex flex-col gap-2.5">
-                <button type="submit" className="btn btn-primary w-full" disabled={pending} data-testid="button-submit-auth">
-                  {pending ? (mode === "signup" ? "Creating account" : "Logging in") : mode === "signup" ? "Create account" : "Log in"}
+                <button type="submit" className="btn btn-primary w-full" disabled={pending || (resetMode && (!session?.email_enabled || !/^\S+@\S+\.\S+$/.test(email.trim())))} data-testid="button-submit-auth">
+                  {pending ? (mode === "signup" ? "Creating account" : "Logging in") : resetMode ? "Send reset link" : mode === "signup" ? "Create account" : "Log in"}
                   {!pending && <Icon name="arrow" size={16} />}
                 </button>
-                <button type="button" className="btn btn-secondary w-full" onClick={() => switchMode(mode === "signup" ? "login" : "signup")} data-testid="button-switch-mode">
+                {mode==="login"&&!resetMode&&<button type="button" className="btn btn-ghost text-[13px]" onClick={()=>{setResetMode(true);setErrors({});}} data-testid="button-forgot-password">Forgot password?</button>}
+                {resetMode?<button type="button" className="btn btn-secondary w-full" onClick={()=>{setResetMode(false);setResetDone(false);setErrors({});}}>Back to sign in</button>:<button type="button" className="btn btn-secondary w-full" onClick={() => switchMode(mode === "signup" ? "login" : "signup")} data-testid="button-switch-mode">
                   {mode === "signup" ? "Log in" : "Create account"}
-                </button>
+                </button>}
               </div>
-            </form>
+            </form>}
           </section>
         </div>
 

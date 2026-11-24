@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { useGetVolunteerPage, useTickVolunteerTask, getGetVolunteerPageQueryKey, type PublicAnnouncement, type VolunteerPage } from "@workspace/api-client-react";
+import { useGetVolunteerPage, useTickVolunteerTask, useCancelVolunteer, getGetVolunteerPageQueryKey, type PublicAnnouncement, type VolunteerPage } from "@workspace/api-client-react";
 import { PublicFrame, PublicMessage } from "@/components/public-frame";
 import { Icon, Skel } from "@/components/brand";
 import { copyText, dueLabel, errorMessage, errorStatus, fmtInTz, fmtTime } from "@/lib/encore";
@@ -66,6 +66,7 @@ export default function VolunteerPrivatePage() {
   const { toast } = useToast();
   const now = useNow();
   const q = useGetVolunteerPage(token, { query: { enabled: !!token, queryKey: getGetVolunteerPageQueryKey(token), refetchInterval: 5000, retry: false } });
+  const cancel = useCancelVolunteer();
 
   if (q.isLoading) return <PublicFrame label="Your page"><div data-testid="status-loading-volunteer"><Skel className="h-12 w-3/4 mb-3" /><Skel className="h-4 w-full mb-6" /><Skel className="h-44 !rounded-2xl" /></div></PublicFrame>;
   if (q.isError || !q.data) {
@@ -77,6 +78,7 @@ export default function VolunteerPrivatePage() {
   const day = fmtInTz(ev.starts_at, ev.timezone, { weekday: "short", month: "short", day: "numeric" });
   const url = window.location.href;
   const removed = p.status === "removed" || p.status === "cancelled";
+  const cancelledByVolunteer = p.status === "cancelled";
   const announcement: PublicAnnouncement | null = p.announcement;
 
   if (p.event_day && !removed) {
@@ -97,6 +99,11 @@ export default function VolunteerPrivatePage() {
           <Checklist token={token} page={p} />
         </section>
         {p.has_map_post && <Link href={`/v/${token}/map`} className="btn btn-secondary w-full mt-4" data-testid="link-volunteer-map"><Icon name="pin" size={15} /> See my post on the map</Link>}
+        <a href={`/api/public/v/${encodeURIComponent(token)}/calendar`} className="btn btn-secondary w-full mt-3" data-testid="link-volunteer-calendar"><Icon name="calendar" size={15} /> Add shift to calendar</a>
+        <button type="button" className="btn btn-ghost w-full mt-3 text-[#8A3426]" onClick={() => {
+          if (!window.confirm("Cancel your volunteer spot? This frees it for someone else.")) return;
+          cancel.mutate({ token }, { onSuccess: () => { toast({ title: "Your spot is cancelled" }); void q.refetch(); }, onError: (error) => toast({ title: "Could not cancel", description: errorMessage(error), variant: "destructive" }) });
+        }} disabled={cancel.isPending} data-testid="button-cancel-volunteer">{cancel.isPending ? "Cancelling" : "Cancel my spot"}</button>
         {ev.event_day_notes && (
           <section className="glass mt-4 rise" style={{ animationDelay: "140ms" }} data-testid="panel-day-notes">
             <div className="mono-label mb-2">Notes from the organizers</div>
@@ -117,7 +124,7 @@ export default function VolunteerPrivatePage() {
     <PublicFrame label="Confirmed">
       <LatestAnnouncement announcement={announcement} timezone={ev.timezone} />
       {removed ? (
-        <PublicMessage title="Your spot was released" body="The organizers removed this sign-up. If that is unexpected, reach out to them directly." />
+        <PublicMessage title={cancelledByVolunteer ? "You cancelled your spot" : "Your spot was released"} body={cancelledByVolunteer ? "Your volunteer place is free again. Thank you for letting the organizers know." : "The organizers removed this sign-up. If that is unexpected, reach out to them directly."} />
       ) : (
         <>
           <h1 className="font-display text-[34px] sm:text-[42px] leading-[1.05] rise" data-testid="text-you-are-in">You are in, {p.name}.</h1>
@@ -133,6 +140,7 @@ export default function VolunteerPrivatePage() {
             </div>
           </section>
           {p.has_map_post && <Link href={`/v/${token}/map`} className="btn btn-secondary w-full mt-4 rise" data-testid="link-volunteer-map"><Icon name="pin" size={15} /> See my post on the map</Link>}
+          <a href={`/api/public/v/${encodeURIComponent(token)}/calendar`} className="btn btn-secondary w-full mt-3" data-testid="link-volunteer-calendar"><Icon name="calendar" size={15} /> Add shift to calendar</a>
           <section className="ai-glass mt-4 rise" style={{ animationDelay: "140ms" }}>
             <p className="font-semibold">Bookmark this page. It is your link for the day.</p>
             <p className="text-[13px] mt-1">On the event day it turns into your checklist.</p>
@@ -144,6 +152,10 @@ export default function VolunteerPrivatePage() {
               <Checklist token={token} page={p} />
             </section>
           )}
+          <button type="button" className="btn btn-ghost w-full mt-4 text-[#8A3426]" onClick={() => {
+            if (!window.confirm("Cancel your volunteer spot? This frees it for someone else.")) return;
+            cancel.mutate({ token }, { onSuccess: () => { toast({ title: "Your spot is cancelled" }); void q.refetch(); }, onError: (error) => toast({ title: "Could not cancel", description: errorMessage(error), variant: "destructive" }) });
+          }} disabled={cancel.isPending} data-testid="button-cancel-volunteer">{cancel.isPending ? "Cancelling" : "Cancel my spot"}</button>
         </>
       )}
     </PublicFrame>

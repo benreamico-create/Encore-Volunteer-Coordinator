@@ -45,7 +45,7 @@ export function SeriesSwitcher({ onNew }: { onNew: () => void }) {
   );
 }
 
-type TabKey = "plan" | "tasks" | "volunteers" | "blueprint" | "chat" | "wrapup";
+type TabKey = "plan" | "tasks" | "volunteers" | "blueprint" | "chat" | "wrapup" | "sponsors";
 const PRIMARY_TABS: { key: TabKey; label: string; icon: "plan" | "tasks" | "people" | "map" | "chat" }[] = [
   { key: "plan", label: "Plan", icon: "plan" },
   { key: "tasks", label: "Tasks", icon: "tasks" },
@@ -53,7 +53,7 @@ const PRIMARY_TABS: { key: TabKey; label: string; icon: "plan" | "tasks" | "peop
   { key: "blueprint", label: "Blueprint", icon: "map" },
   { key: "chat", label: "Chat", icon: "chat" },
 ];
-const TAB_KEYS: TabKey[] = ["plan", "tasks", "volunteers", "blueprint", "chat", "wrapup"];
+const TAB_KEYS: TabKey[] = ["plan", "tasks", "volunteers", "blueprint", "chat", "wrapup", "sponsors"];
 const SECTION_SIDEBAR_KEY = "encore.section-sidebar-collapsed";
 
 function parseRoute(loc: string): { eventId: number | null; tab: TabKey | null } {
@@ -83,6 +83,10 @@ function UserMenu({ side = "right" }: { side?: "right" | "top" }) {
           <span className="block font-semibold">{user.name || "Organizer"}</span>
           <span className="block text-[12px] text-muted-ink font-normal">{user.email}</span>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer gap-2">
+          <Link href="/app/account" data-testid="link-account-settings"><Icon name="tag" size={16} /> Account and data</Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => logout()} disabled={loggingOut} className="cursor-pointer gap-2" data-testid="button-logout">
           <Icon name="logout" size={16} /> {loggingOut ? "Signing out…" : "Sign out"}
@@ -158,7 +162,7 @@ function SectionNav({ eventId, eventName, tab, onNavigate, onNewSeries, onClose,
   const { toast } = useToast();
   const [moreOpen, setMoreOpen] = useState(tab === "wrapup");
   useEffect(() => { if (tab === "wrapup") setMoreOpen(true); }, [tab]);
-  const link = (key: TabKey, label: string, icon: "plan" | "tasks" | "people" | "map" | "chat" | "loop") =>
+  const link = (key: TabKey, label: string, icon: "plan" | "tasks" | "people" | "map" | "chat" | "loop" | "tag") =>
     eventId ? (
       <Link key={key} href={`/app/events/${eventId}/${key}`} onClick={onNavigate} className="section-item" aria-current={tab === key ? "page" : undefined} data-active={tab === key} data-testid={`nav-${key}`}>
         <Icon name={icon} size={19} /><span>{label}</span>
@@ -186,9 +190,7 @@ function SectionNav({ eventId, eventName, tab, onNavigate, onNewSeries, onClose,
         {moreOpen && (
           <div id="section-more" className="flex flex-col gap-1 pl-3">
             {link("wrapup", "Wrap-up", "loop")}
-            <button type="button" className="section-item is-disabled" aria-disabled="true" onClick={() => toast({ title: "Sponsors is coming soon" })} data-testid="nav-sponsors-disabled">
-              <Icon name="tag" size={19} /><span>Sponsors</span><span className="section-soon">Soon</span>
-            </button>
+            {link("sponsors", "Sponsors", "tag")}
           </div>
         )}
       </nav>

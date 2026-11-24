@@ -1,5 +1,6 @@
 -- Tier 4: additive changes only; existing accounts and event links are preserved.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS demo_owner_id integer REFERENCES users(id) ON DELETE CASCADE;
 ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_idx ON users(google_sub) WHERE google_sub IS NOT NULL;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS sponsor_goal_amount double precision CHECK(sponsor_goal_amount >= 0);
@@ -12,6 +13,7 @@ CREATE TABLE IF NOT EXISTS sponsors (
   next_step_due date, created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS sponsors_event_idx ON sponsors(event_id);
+ALTER TABLE map_items ADD COLUMN IF NOT EXISTS resource_id integer REFERENCES resources(id) ON DELETE SET NULL;
 -- Preserve legacy constraint and permit only the additional PRD source.
 ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_source_check;
 ALTER TABLE tasks ADD CONSTRAINT tasks_source_check CHECK(source IN ('manual','ai_plan','signup','carryover','starter','sponsor'));

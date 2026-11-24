@@ -12,4 +12,6 @@ export interface ReminderSendInput {
      * @maxLength 5000
      */
   message: string;
+  /** @nullable */
+  volunteer_id?: number | null;
 }

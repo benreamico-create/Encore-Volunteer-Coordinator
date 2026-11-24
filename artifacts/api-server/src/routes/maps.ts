@@ -40,6 +40,10 @@ async function validateRole(eventId: number, kind: string, roleId: number | null
   if (kind !== "station" && roleId != null) throw new HttpError(400, "Only a station can be linked to a volunteer role.");
   if (roleId != null) required(await one("SELECT id FROM roles WHERE id=$1 AND event_id=$2", [roleId, eventId]), "That role is not part of this event.");
 }
+async function validateResource(eventId:number,kind:string,resourceId:number|null|undefined) {
+  if(kind!=="booth"&&resourceId!=null) throw new HttpError(400,"Only a booth can use a vendor resource.");
+  if(resourceId!=null) required(await one("SELECT id FROM resources WHERE id=$1 AND event_id=$2 AND kind='vendor'",[resourceId,eventId]),"That vendor resource is not part of this event.");
+}
 function cleanItem(data: Record<string, any>) {
   return {
     kind: data.kind, label: data.label.trim(),
@@ -47,6 +51,7 @@ function cleanItem(data: Record<string, any>) {
     vendor_name: data.kind === "booth" ? (data.vendor_name?.trim() || null) : null,
     needs_text: data.kind === "booth" ? (data.needs_text?.trim() || null) : null,
     role_id: data.kind === "station" ? (data.role_id ?? null) : null,
+    resource_id: data.kind === "booth" ? (data.resource_id ?? null) : null,
   };
 }
 
@@ -143,11 +148,12 @@ router.post("/events/:id/map/items", async (req, res) => {
   const item = cleanItem(data);
   validateGeometry(item);
   await validateRole(eventId, item.kind, item.role_id);
+  await validateResource(eventId,item.kind,item.resource_id);
   const order = await one("SELECT coalesce(max(sort_order),0)+1 AS n FROM map_items WHERE map_id=$1", [map.id]);
   const saved = await one(
-    `INSERT INTO map_items(map_id,kind,label,x_pct,y_pct,w_pct,h_pct,vendor_name,needs_text,role_id,sort_order)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-    [map.id, item.kind, item.label, item.x_pct, item.y_pct, item.w_pct, item.h_pct, item.vendor_name, item.needs_text, item.role_id, order!.n],
+    `INSERT INTO map_items(map_id,kind,label,x_pct,y_pct,w_pct,h_pct,vendor_name,needs_text,role_id,sort_order,resource_id)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+    [map.id, item.kind, item.label, item.x_pct, item.y_pct, item.w_pct, item.h_pct, item.vendor_name, item.needs_text, item.role_id, order!.n,item.resource_id],
   );
   res.json(CreateMapItemResponse.parse(wire(saved)));
 });
@@ -160,10 +166,11 @@ router.patch("/events/:id/map/items/:itemId", async (req, res) => {
   const merged = cleanItem({ ...existing, ...data });
   validateGeometry(merged);
   await validateRole(eventId, merged.kind, merged.role_id);
+  await validateResource(eventId,merged.kind,merged.resource_id);
   const columns: Record<string, unknown> = merged;
-  const keys = Object.keys(data).filter((key) => ["kind", "label", "x_pct", "y_pct", "w_pct", "h_pct", "vendor_name", "needs_text", "role_id"].includes(key));
+  const keys = Object.keys(data).filter((key) => ["kind", "label", "x_pct", "y_pct", "w_pct", "h_pct", "vendor_name", "needs_text", "role_id","resource_id"].includes(key));
   // Kind-dependent fields must be reset when an item changes type.
-  if (data.kind !== undefined) keys.push("vendor_name", "needs_text", "role_id");
+  if (data.kind !== undefined) keys.push("vendor_name", "needs_text", "role_id","resource_id");
   const uniqueKeys = [...new Set(keys)];
   const params: unknown[] = [itemId, map.id];
   const set = uniqueKeys.map((key) => { params.push(columns[key]); return `${key}=$${params.length}`; }).join(",");

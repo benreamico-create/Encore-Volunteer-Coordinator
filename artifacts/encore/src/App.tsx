@@ -17,6 +17,8 @@ import VolunteerPrivatePage from '@/pages/volunteer';
 import BlueprintPage from '@/pages/blueprint';
 import VolunteerMapPage from '@/pages/volunteer-map';
 import ChatPage from '@/pages/chat';
+import SponsorsPage from '@/pages/sponsors';
+import AccountPage from '@/pages/account';
 import { EncoreProvider, useSessionQuery } from '@/lib/session';
 import { EchoMark, ErrorPanel, Orbs } from '@/components/brand';
 import { errorMessage } from '@/lib/encore';
@@ -73,12 +75,14 @@ function Gate() {
       <RoutedErrorBoundary>
         <Switch>
           <Route path="/" component={AuthPage} />
+          <Route path="/app/account" component={AccountPage} />
           <Route path="/app" component={DashboardPage} />
           <Route path="/app/series/:id/events/new" component={NewEventPage} />
           <Route path="/app/events/:id/plan" component={PlanPage} />
           <Route path="/app/events/:id/tasks" component={TasksPage} />
           <Route path="/app/events/:id/volunteers" component={VolunteersPage} />
           <Route path="/app/events/:id/chat" component={ChatPage} />
+          <Route path="/app/events/:id/sponsors" component={SponsorsPage} />
           <Route path="/app/events/:id/blueprint" component={BlueprintPage} />
           <Route path="/app/events/:id/wrapup" component={RecapPage} />
           <Route path="/app/events/:id/recap" component={LegacyWrapupRedirect} />

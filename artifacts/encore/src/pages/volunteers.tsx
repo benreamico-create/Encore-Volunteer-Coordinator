@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { useParams } from "wouter";
+import { Link, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  useCreateRole, useUpdateRole, useDeleteRole, useRemoveVolunteer, useUpdateEvent, useGetReminder,
-  getGetEventQueryKey, getGetReminderQueryKey,
+  useCreateRole, useUpdateRole, useDeleteRole, useRemoveVolunteer, useUpdateEvent, useGetReminder, useSendReminder,
+  getGetEventQueryKey, getGetReminderQueryKey, useGetEventMap, getGetEventMapQueryKey,
   type EventBundle, type Role, type Volunteer, type EventUpdate,
 } from "@workspace/api-client-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -81,6 +81,7 @@ function ReminderModal({ b, open, onOpenChange }: { b: EventBundle; open: boolea
   const r = useGetReminder(id, { query: { enabled: open && !!id, queryKey: getGetReminderQueryKey(id), retry: false, staleTime: 0 } });
   const [pick, setPick] = useState("general");
   const [text, setText] = useState("");
+  const send=useSendReminder();
   const drafts = r.data?.drafts ?? [];
   const sel = pick === "general" ? null : drafts[Number(pick)] ?? null;
   useEffect(() => { if (open) setPick("general"); }, [open]);
@@ -114,6 +115,11 @@ function ReminderModal({ b, open, onOpenChange }: { b: EventBundle; open: boolea
               <textarea className="field text-[15px]" rows={8} value={text} onChange={(e) => setText(e.target.value)} data-testid="input-reminder-message" />
               {!sel && <p className="text-[13px] text-muted-ink">{r.data.recipients.length} volunteer{r.data.recipients.length === 1 ? "" : "s"} agreed to email. "Open in mail" puts them in BCC.</p>}
               <div className="flex flex-wrap justify-end gap-3">
+                {r.data.email_enabled&&<button className="btn btn-primary" disabled={!text.trim()||send.isPending||(sel?!sel.email:!r.data.recipients.length)} onClick={()=>{
+                  const count=sel?1:r.data!.recipients.length;
+                  if(!window.confirm(`Send this ${sel?"private message to "+sel.name:`message to ${count} opted-in volunteers`}?`))return;
+                  send.mutate({id,data:{message:text,volunteer_id:sel?.id??null}},{onSuccess:(result)=>toast({title:`Sent to ${result.sent}`,description:result.failed?`${result.failed} could not be sent.`:"Volunteer emails are logged."}),onError:(e)=>toast({title:"Reminder was not sent",description:errorMessage(e),variant:"destructive"})});
+                }} data-testid="button-send-reminder">{send.isPending?"Sending…":sel?"Send to this volunteer":`Send to ${r.data.recipients.length}`}</button>}
                 {mailto && <a className="btn btn-secondary" href={mailto} data-testid="link-reminder-mailto"><Icon name="link" size={15} /> Open in mail</a>}
                 <button className="btn btn-primary" disabled={!text.trim()} onClick={async () => toast((await copyText(text)) ? { title: "Message copied" } : { title: "Could not copy", variant: "destructive" })} data-testid="button-copy-reminder"><Icon name="copy" size={15} /> Copy message</button>
               </div>
@@ -130,6 +136,7 @@ export default function VolunteersPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const q = useEventBundle(id);
+  const mapQ=useGetEventMap(id,{query:{enabled:!!id,queryKey:getGetEventMapQueryKey(id)}});
   const key = getGetEventQueryKey(id);
   const createRole = useCreateRole(); const updateRole = useUpdateRole(); const deleteRole = useDeleteRole();
   const removeVol = useRemoveVolunteer(); const updateEvent = useUpdateEvent();
@@ -142,6 +149,12 @@ export default function VolunteersPage() {
   const refresh = () => qc.invalidateQueries({ queryKey: key });
 
   const b = q.data;
+  useEffect(()=>{
+    const target=Number(new URLSearchParams(window.location.search).get("role"));
+    if(!target||!b?.roles.some((role)=>role.id===target))return;
+    const timer=window.setTimeout(()=>{const card=document.querySelector<HTMLElement>(`[data-testid="card-role-${target}"]`);card?.scrollIntoView({behavior:"smooth",block:"center"});card?.focus({preventScroll:true});},100);
+    return()=>window.clearTimeout(timer);
+  },[b?.roles]);
   if (q.isLoading) return <Shell><div data-testid="status-loading-volunteers"><Skel className="h-10 w-56 mb-3" /><Skel className="h-4 w-72 mb-8" /><div className="grid lg:grid-cols-[1fr_360px] gap-6"><div className="grid sm:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <Skel key={i} className="h-40 !rounded-2xl" />)}</div><Skel className="h-72 !rounded-2xl" /></div></div></Shell>;
   if (q.isError || !b) {
     const nf = errorStatus(q.error) === 404 || errorStatus(q.error) === 403;
@@ -152,7 +165,7 @@ export default function VolunteersPage() {
   const total = b.roles.reduce((n, r) => n + r.slots_needed, 0);
   const filled = b.roles.reduce((n, r) => n + r.filled, 0);
   const roleName = (rid: number) => b.roles.find((r) => r.id === rid)?.name ?? "Role removed";
-  const recent = [...b.volunteers].sort((a, c) => +new Date(c.created_at) - +new Date(a.created_at));
+   const recent = [...b.volunteers].sort((a, c) => +new Date(c.created_at) - +new Date(a.created_at));
 
   const toggle = (data: EventUpdate, msg: string) => {
     qc.setQueryData<EventBundle>(key, (o) => (o ? { ...o, event: { ...o.event, ...data } } : o));
@@ -191,17 +204,19 @@ export default function VolunteersPage() {
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {b.roles.map((r, i) => {
-              const people = b.volunteers.filter((v) => v.role_id === r.id);
+              const people = b.volunteers.filter((v) => v.role_id === r.id&&v.status==="confirmed");
+              const post=mapQ.data?.items.find((item)=>item.kind==="station"&&item.role_id===r.id);
               const full = r.filled >= r.slots_needed;
               return (
-                <article key={r.id} className="glass rise flex flex-col min-w-0" style={{ animationDelay: `${i * 50}ms` }} data-testid={`card-role-${r.id}`}>
+                <article key={r.id} tabIndex={-1} className="glass rise flex flex-col min-w-0" style={{ animationDelay: `${i * 50}ms` }} data-testid={`card-role-${r.id}`}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <h3 className="font-display text-[22px] leading-tight break-words min-w-0">{r.name}</h3>
                     <span className={`chip ${full ? "chip-done" : "chip-open"}`} data-testid={`text-role-filled-${r.id}`}>{r.filled} of {r.slots_needed} filled</span>
                   </div>
                   {r.instruction && <p className="text-[14px] text-muted-ink mt-1.5">{r.instruction}</p>}
+                  {post&&<Link href={`/app/events/${id}/blueprint?item=${post.id}`} className="mt-2 text-[12px] underline underline-offset-2 text-[var(--forest)]" data-testid={`link-role-post-${r.id}`}>Post: {post.label}</Link>}
                   <div className="flex flex-wrap gap-1.5 mt-4">
-                    {people.map((v) => <Avatar key={v.id} name={v.name} size={30} />)}
+                  {people.map((v) => <Avatar key={v.id} name={v.name} size={30} />)}
                     {Array.from({ length: Math.max(0, r.slots_needed - people.length) }).map((_, j) => (
                       <span key={j} className="w-[30px] h-[30px] rounded-full border-[1.5px] border-dashed" style={{ borderColor: "#9C9A92" }} aria-hidden="true" />
                     ))}

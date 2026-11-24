@@ -15,6 +15,8 @@ export type MapItem = MapItemInput & ({
   /** @nullable */
   needs_text: string | null;
   /** @nullable */
+  resource_id?: number | null;
+  /** @nullable */
   role_id: number | null;
   sort_order: number;
 });

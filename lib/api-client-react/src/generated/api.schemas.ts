@@ -48,6 +48,8 @@ export interface ReminderSendInput {
      * @maxLength 5000
      */
   message: string;
+  /** @nullable */
+  volunteer_id?: number | null;
 }
 
 export type SponsorInputStatus = typeof SponsorInputStatus[keyof typeof SponsorInputStatus];
@@ -618,6 +620,7 @@ export interface NextInput {
 }
 
 export interface ReminderDraft {
+  id: number;
   name: string;
   message: string;
   /** @nullable */
@@ -785,6 +788,8 @@ export interface MapItemInput {
      */
   needs_text?: string | null;
   /** @nullable */
+  resource_id?: number | null;
+  /** @nullable */
   role_id?: number | null;
 }
 
@@ -847,6 +852,8 @@ export type MapItem = MapItemInput & ({
   vendor_name: string | null;
   /** @nullable */
   needs_text: string | null;
+  /** @nullable */
+  resource_id?: number | null;
   /** @nullable */
   role_id: number | null;
   sort_order: number;
@@ -989,6 +996,8 @@ export interface TickInput {
 export type RequestPasswordReset200 = {
   message: string;
 };
+
+export type ExportAccount200 = { [key: string]: unknown };
 
 export type GetSeriesTeam200MembersItemRole = typeof GetSeriesTeam200MembersItemRole[keyof typeof GetSeriesTeam200MembersItemRole];
 

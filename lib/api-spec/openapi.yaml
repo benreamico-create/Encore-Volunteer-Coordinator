@@ -39,6 +39,14 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Ok" }
   /account:
+    get:
+      operationId: exportAccount
+      responses:
+        "200":
+          description: Download organizer's Encore records
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
     delete:
       operationId: deleteAccount
       responses:
@@ -872,6 +880,7 @@ components:
       required: [message]
       properties:
         message: { type: string, minLength: 1, maxLength: 5000 }
+        volunteer_id: { type: [integer, "null"] }
     SponsorInput:
       type: object
       required: [name, offer_text, status, owner_user_id, amount, next_step_text, next_step_due]
@@ -1238,8 +1247,9 @@ components:
           items: { $ref: "#/components/schemas/ReminderDraft" }
     ReminderDraft:
       type: object
-      required: [name, message, email]
+      required: [id, name, message, email]
       properties:
+        id: { type: integer }
         name: { type: string }
         message: { type: string }
         email: { type: [string, "null"] }
@@ -1325,6 +1335,7 @@ components:
         h_pct: { type: number, minimum: 2, maximum: 100 }
         vendor_name: { type: [string, "null"], maxLength: 160 }
         needs_text: { type: [string, "null"], maxLength: 1000 }
+        resource_id: { type: [integer, "null"] }
         role_id: { type: [integer, "null"] }
     MapItemUpdate:
       type: object
@@ -1348,6 +1359,7 @@ components:
             map_id: { type: integer }
             vendor_name: { type: [string, "null"] }
             needs_text: { type: [string, "null"] }
+            resource_id: { type: [integer, "null"] }
             role_id: { type: [integer, "null"] }
             sort_order: { type: number }
     BlueprintMapInput:

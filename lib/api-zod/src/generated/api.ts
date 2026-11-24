@@ -35,6 +35,9 @@ export const ConfirmPasswordResetResponse = zod.object({
 })
 
 
+export const ExportAccountResponse = zod.record(zod.string(), zod.unknown())
+
+
 export const DeleteAccountResponse = zod.object({
   "ok": zod.boolean()
 })
@@ -315,7 +318,8 @@ export const sendReminderBodyMessageMax = 5000;
 
 
 export const SendReminderBody = zod.object({
-  "message": zod.string().min(1).max(sendReminderBodyMessageMax)
+  "message": zod.string().min(1).max(sendReminderBodyMessageMax),
+  "volunteer_id": zod.number().int().nullish()
 })
 
 export const SendReminderResponse = zod.object({
@@ -1425,12 +1429,14 @@ export const GetEventMapResponse = zod.object({
   "h_pct": zod.number().min(getEventMapResponseItemsItemOneHPctMin).max(getEventMapResponseItemsItemOneHPctMax),
   "vendor_name": zod.string().max(getEventMapResponseItemsItemOneVendorNameMax).nullable(),
   "needs_text": zod.string().max(getEventMapResponseItemsItemOneNeedsTextMax).nullable(),
+  "resource_id": zod.number().int().nullish(),
   "role_id": zod.number().int().nullable()
 }).and(zod.object({
   "id": zod.number().int(),
   "map_id": zod.number().int(),
   "vendor_name": zod.string().nullable(),
   "needs_text": zod.string().nullable(),
+  "resource_id": zod.number().int().nullish(),
   "role_id": zod.number().int().nullable(),
   "sort_order": zod.number()
 }))),
@@ -1497,12 +1503,14 @@ export const SaveEventMapResponse = zod.object({
   "h_pct": zod.number().min(saveEventMapResponseItemsItemOneHPctMin).max(saveEventMapResponseItemsItemOneHPctMax),
   "vendor_name": zod.string().max(saveEventMapResponseItemsItemOneVendorNameMax).nullable(),
   "needs_text": zod.string().max(saveEventMapResponseItemsItemOneNeedsTextMax).nullable(),
+  "resource_id": zod.number().int().nullish(),
   "role_id": zod.number().int().nullable()
 }).and(zod.object({
   "id": zod.number().int(),
   "map_id": zod.number().int(),
   "vendor_name": zod.string().nullable(),
   "needs_text": zod.string().nullable(),
+  "resource_id": zod.number().int().nullish(),
   "role_id": zod.number().int().nullable(),
   "sort_order": zod.number()
 }))),
@@ -1565,6 +1573,7 @@ export const CreateMapItemBody = zod.object({
   "h_pct": zod.number().min(createMapItemBodyHPctMin).max(createMapItemBodyHPctMax),
   "vendor_name": zod.string().max(createMapItemBodyVendorNameMax).nullish(),
   "needs_text": zod.string().max(createMapItemBodyNeedsTextMax).nullish(),
+  "resource_id": zod.number().int().nullish(),
   "role_id": zod.number().int().nullish()
 })
 
@@ -1597,12 +1606,14 @@ export const CreateMapItemResponse = zod.object({
   "h_pct": zod.number().min(createMapItemResponseOneHPctMin).max(createMapItemResponseOneHPctMax),
   "vendor_name": zod.string().max(createMapItemResponseOneVendorNameMax).nullable(),
   "needs_text": zod.string().max(createMapItemResponseOneNeedsTextMax).nullable(),
+  "resource_id": zod.number().int().nullish(),
   "role_id": zod.number().int().nullable()
 }).and(zod.object({
   "id": zod.number().int(),
   "map_id": zod.number().int(),
   "vendor_name": zod.string().nullable(),
   "needs_text": zod.string().nullable(),
+  "resource_id": zod.number().int().nullish(),
   "role_id": zod.number().int().nullable(),
   "sort_order": zod.number()
 }))
@@ -1674,12 +1685,14 @@ export const UpdateMapItemResponse = zod.object({
   "h_pct": zod.number().min(updateMapItemResponseOneHPctMin).max(updateMapItemResponseOneHPctMax),
   "vendor_name": zod.string().max(updateMapItemResponseOneVendorNameMax).nullable(),
   "needs_text": zod.string().max(updateMapItemResponseOneNeedsTextMax).nullable(),
+  "resource_id": zod.number().int().nullish(),
   "role_id": zod.number().int().nullable()
 }).and(zod.object({
   "id": zod.number().int(),
   "map_id": zod.number().int(),
   "vendor_name": zod.string().nullable(),
   "needs_text": zod.string().nullable(),
+  "resource_id": zod.number().int().nullish(),
   "role_id": zod.number().int().nullable(),
   "sort_order": zod.number()
 }))
@@ -2165,6 +2178,7 @@ export const GetReminderResponse = zod.object({
   "email_enabled": zod.boolean(),
   "notice": zod.string(),
   "drafts": zod.array(zod.object({
+  "id": zod.number().int(),
   "name": zod.string(),
   "message": zod.string(),
   "email": zod.string().nullable()
@@ -2585,12 +2599,14 @@ export const GetVolunteerMapResponse = zod.object({
   "h_pct": zod.number().min(getVolunteerMapResponseItemsItemOneHPctMin).max(getVolunteerMapResponseItemsItemOneHPctMax),
   "vendor_name": zod.string().max(getVolunteerMapResponseItemsItemOneVendorNameMax).nullable(),
   "needs_text": zod.string().max(getVolunteerMapResponseItemsItemOneNeedsTextMax).nullable(),
+  "resource_id": zod.number().int().nullish(),
   "role_id": zod.number().int().nullable()
 }).and(zod.object({
   "id": zod.number().int(),
   "map_id": zod.number().int(),
   "vendor_name": zod.string().nullable(),
   "needs_text": zod.string().nullable(),
+  "resource_id": zod.number().int().nullish(),
   "role_id": zod.number().int().nullable(),
   "sort_order": zod.number()
 }))),

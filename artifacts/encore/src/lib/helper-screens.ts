@@ -31,6 +31,10 @@ export const HELPER_SCREEN_INFO: Record<HelperScreen, { label: string; prompts: 
     label: "Chat",
     prompts: ["What follow-up task would help the team?", "Draft a short team check-in.", "How can I make the next steps clear?"],
   },
+  sponsors: {
+    label: "Sponsors",
+    prompts: ["Who needs a sponsor follow-up?", "Which next step should become a task?", "What is the confirmed sponsor total?"],
+  },
   wrapup: {
     label: "Wrap-up",
     prompts: ["Help me reflect on what worked.", "What should I consider carrying forward?", "Turn my lesson into a next step."],

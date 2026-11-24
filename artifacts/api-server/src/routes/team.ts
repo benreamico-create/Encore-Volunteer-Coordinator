@@ -33,7 +33,21 @@ function messageRow(row: Record<string, unknown>) {
     body: row.deleted_at ? "" : row.body,
     created_at: row.created_at,
     deleted_at: row.deleted_at,
+    link_type: row.link_type ?? null,
+    link_id: row.link_id ?? null,
+    link_label: row.link_label ?? (row.link_type ? "Linked item no longer available" : null),
+    link_href: row.link_href ?? null,
   };
+}
+async function messageTarget(eventId:number,type:string|null|undefined,itemId:number|null|undefined){
+  if(!type||!itemId)return {link_label:null,link_href:null};
+  let target:Record<string,any>|undefined;
+  if(type==="task") target=await one("SELECT title AS label FROM tasks WHERE id=$1 AND event_id=$2",[itemId,eventId]);
+  if(type==="role") target=await one("SELECT name AS label FROM roles WHERE id=$1 AND event_id=$2",[itemId,eventId]);
+  if(type==="map_item") target=await one("SELECT i.label FROM map_items i JOIN maps m ON m.id=i.map_id WHERE i.id=$1 AND m.event_id=$2",[itemId,eventId]);
+  const path=type==="task"?"tasks":type==="role"?"volunteers":"blueprint";
+  return target?{link_label:target.label,link_href:`/app/events/${eventId}/${path}?${type==="task"?"task":type==="role"?"role":"item"}=${itemId}`}
+    :{link_label:"Linked item no longer available",link_href:null};
 }
 
 router.get("/events/:id/messages", async (req, res): Promise<void> => {
@@ -45,15 +59,23 @@ router.get("/events/:id/messages", async (req, res): Promise<void> => {
   const after = parsedAfter.data;
   const found = after > 0
     ? await rows(
-      `SELECT m.*,u.name AS user_name FROM messages m JOIN users u ON u.id=m.user_id
-       WHERE m.event_id=$1 AND (
-         m.id>$2 OR (m.deleted_at IS NOT NULL AND m.deleted_at>now()-interval '7 days')
-       ) ORDER BY m.id LIMIT $3`,
+       `SELECT m.*,u.name AS user_name,
+        CASE m.link_type WHEN 'task' THEN (SELECT title FROM tasks WHERE id=m.link_id AND event_id=m.event_id)
+          WHEN 'role' THEN (SELECT name FROM roles WHERE id=m.link_id AND event_id=m.event_id)
+          WHEN 'map_item' THEN (SELECT i.label FROM map_items i JOIN maps mp ON mp.id=i.map_id WHERE i.id=m.link_id AND mp.event_id=m.event_id) END AS link_label
+        FROM messages m JOIN users u ON u.id=m.user_id
+        WHERE m.event_id=$1 AND (
+          m.id>$2 OR (m.deleted_at IS NOT NULL AND m.deleted_at>now()-interval '7 days')
+        ) ORDER BY m.id LIMIT $3`,
       [eventId, after, messageLimit],
     )
     : await rows(
       `SELECT * FROM (
-         SELECT m.*,u.name AS user_name FROM messages m JOIN users u ON u.id=m.user_id
+          SELECT m.*,u.name AS user_name,
+           CASE m.link_type WHEN 'task' THEN (SELECT title FROM tasks WHERE id=m.link_id AND event_id=m.event_id)
+             WHEN 'role' THEN (SELECT name FROM roles WHERE id=m.link_id AND event_id=m.event_id)
+             WHEN 'map_item' THEN (SELECT i.label FROM map_items i JOIN maps mp ON mp.id=i.map_id WHERE i.id=m.link_id AND mp.event_id=m.event_id) END AS link_label
+          FROM messages m JOIN users u ON u.id=m.user_id
          WHERE m.event_id=$1 ORDER BY m.id DESC LIMIT $2
        ) latest ORDER BY id`,
       [eventId, messageLimit],
@@ -68,16 +90,20 @@ router.post("/events/:id/messages", async (req, res): Promise<void> => {
   const parsed = CreateEventMessageBody.safeParse(req.body);
   if (!parsed.success) throw new HttpError(400, "Write a message of up to 2,000 characters.");
   const body = normalizedText(parsed.data.body, 2000, "message");
+  const linkType=parsed.data.link_type??null,linkId=parsed.data.link_id??null;
+  if((linkType===null)!==(linkId===null))throw new HttpError(400,"Choose a link target.");
+  if(linkType==="task") required(await one("SELECT id FROM tasks WHERE id=$1 AND event_id=$2",[linkId,eventId]),"That task is not part of this event.");
+  if(linkType==="role") required(await one("SELECT id FROM roles WHERE id=$1 AND event_id=$2",[linkId,eventId]),"That role is not part of this event.");
+  if(linkType==="map_item") required(await one("SELECT i.id FROM map_items i JOIN maps m ON m.id=i.map_id WHERE i.id=$1 AND m.event_id=$2",[linkId,eventId]),"That map item is not part of this event.");
   await rateLimitByUser(uid, "event-message", 60);
   const created = required(await one(
-    `INSERT INTO messages(event_id,user_id,body) VALUES($1,$2,$3)
-     RETURNING id,event_id,user_id,body,created_at,deleted_at`,
-    [eventId, uid, body],
+    `INSERT INTO messages(event_id,user_id,body,link_type,link_id) VALUES($1,$2,$3,$4,$5)
+     RETURNING id,event_id,user_id,body,created_at,deleted_at,link_type,link_id`,
+    [eventId, uid, body,linkType,linkId],
   ));
   const user = required(await one("SELECT name FROM users WHERE id=$1", [uid]));
-  res.status(201).json({
-    ...ListEventMessagesResponse.element.parse(messageRow({ ...created, user_name: user.name })),
-  });
+  const target=await messageTarget(eventId,linkType,linkId);
+  res.status(201).json(ListEventMessagesResponse.element.parse(messageRow({ ...created,...target,user_name: user.name })));
 });
 
 router.delete("/events/:id/messages/:itemId", async (req, res): Promise<void> => {
@@ -87,7 +113,7 @@ router.delete("/events/:id/messages/:itemId", async (req, res): Promise<void> =>
   const deleted = required(await one(
     `UPDATE messages SET deleted_at=now()
      WHERE id=$1 AND event_id=$2 AND user_id=$3 AND deleted_at IS NULL
-     RETURNING id,event_id,user_id,body,created_at,deleted_at`,
+     RETURNING id,event_id,user_id,body,created_at,deleted_at,link_type,link_id`,
     [id(req.params.itemId), eventId, uid],
   ), "Message not found.");
   const user = required(await one("SELECT name FROM users WHERE id=$1", [uid]));

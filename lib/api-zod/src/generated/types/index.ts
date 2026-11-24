@@ -28,6 +28,7 @@ export * from './eventInput';
 export * from './eventStatus';
 export * from './eventUpdate';
 export * from './eventUpdateStatus';
+export * from './exportAccount200';
 export * from './getSeriesTeam200';
 export * from './getSeriesTeam200MembersItem';
 export * from './getSeriesTeam200MembersItemRole';

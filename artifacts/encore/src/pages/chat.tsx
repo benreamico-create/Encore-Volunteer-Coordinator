@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "wouter";
+import { Link, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -13,6 +13,8 @@ import {
   useDeleteEventMessage,
   useDraftAnnouncement,
   useGetEvent,
+  useGetEventMap,
+  getGetEventMapQueryKey,
   useGetEventAnnouncement,
   useListEventMessages,
   type Announcement,
@@ -41,6 +43,7 @@ export default function ChatPage() {
   const { toast } = useToast();
   const userId = session?.user?.id;
   const eventQuery = useGetEvent(id, { query: { enabled: !!id, queryKey: getGetEventQueryKey(id) } });
+  const mapQuery = useGetEventMap(id,{query:{enabled:!!id,queryKey:getGetEventMapQueryKey(id)}});
   const [after, setAfter] = useState(0);
   const [feed, setFeed] = useState<TeamMessage[]>([]);
   const messageForm = useForm<{ body: string }>({
@@ -57,6 +60,7 @@ export default function ChatPage() {
   const [draftError, setDraftError] = useState("");
   const [messageError, setMessageError] = useState("");
   const [announcementError, setAnnouncementError] = useState("");
+  const [linkedItem,setLinkedItem]=useState("");
   const messagesQuery = useListEventMessages(id, { after }, {
     query: {
       enabled: !!id,
@@ -102,12 +106,19 @@ export default function ChatPage() {
     if (greatestId > after) setAfter(greatestId);
   }, [messagesQuery.data, after]);
 
+  const linkOptions=[
+    ...(eventQuery.data?.tasks??[]).map((item)=>({key:`task:${item.id}`,label:`Task · ${item.title}`})),
+    ...(eventQuery.data?.roles??[]).map((item)=>({key:`role:${item.id}`,label:`Role · ${item.name}`})),
+    ...(mapQuery.data?.items??[]).map((item)=>({key:`map_item:${item.id}`,label:`Map · ${item.label}`})),
+  ];
   const submitMessage = messageForm.handleSubmit(({ body }) => {
     setMessageError("");
-    sendMessage.mutate({ id, data: { body } }, {
+    const [link_type,rawLinkId]=linkedItem?linkedItem.split(":"):[null,null];
+    sendMessage.mutate({ id, data: { body,link_type:link_type as "task"|"role"|"map_item"|null,link_id:rawLinkId?Number(rawLinkId):null } }, {
       onSuccess: (created) => {
         setFeed((current) => [...current.filter((item) => item.id !== created.id), created].sort((a, b) => a.id - b.id));
         messageForm.reset();
+        setLinkedItem("");
         setAfter((current) => Math.max(current, created.id));
         void qc.invalidateQueries({ queryKey: getListEventMessagesQueryKey(id) });
       },
@@ -190,6 +201,9 @@ export default function ChatPage() {
                       <div className={`min-w-0 max-w-[82%] ${own ? "text-right" : ""}`}>
                         <div className={`flex items-center gap-2 mb-1 ${own ? "justify-end" : ""}`}><span className="text-[12px] font-semibold" data-testid={`text-message-author-${message.id}`}>{own ? "You" : message.user_name}</span><time className="text-[10px] text-muted-ink" dateTime={message.created_at} data-testid={`text-message-time-${message.id}`}>{timeLabel(message.created_at, event.timezone)}</time></div>
                         <div className={`rounded-[16px] px-3.5 py-2.5 text-[14px] whitespace-pre-wrap break-words text-left ${own ? "rounded-tr-sm" : "rounded-tl-sm"}`} style={{ background: message.deleted_at ? "rgba(35,41,30,.06)" : own ? "#37442E" : "rgba(255,255,255,.8)", color: message.deleted_at ? "var(--muted-ink)" : own ? "#FEFCF0" : "var(--ink)", border: "1px solid rgba(55,68,46,.08)" }} data-testid={`text-message-body-${message.id}`}>{message.deleted_at ? "Message deleted" : message.body}</div>
+                         {message.link_type && !message.deleted_at && <div className={`mt-1 ${own?"text-right":""}`}>{message.link_href
+                           ?<Link href={message.link_href} className={`inline-flex rounded-full px-3 py-1 text-[11px] underline underline-offset-2 ${own?"text-[#FEFCF0] bg-white/15":"text-[var(--forest)] bg-[#e5eadf]"}`} data-testid={`link-message-target-${message.id}`}>Open {message.link_label}</Link>
+                           :<span className="inline-flex rounded-full px-3 py-1 text-[11px] text-muted-ink bg-black/5">{message.link_label??"Linked item no longer available"}</span>}</div>}
                         {own && !message.deleted_at && <button type="button" className="text-[11px] text-muted-ink hover:text-[#9A3A2A] mt-1 underline underline-offset-2" onClick={() => removeMessage(message)} disabled={deleteMessage.isPending} data-testid={`button-delete-message-${message.id}`}>Delete</button>}
                       </div>
                     </article>;
@@ -198,7 +212,9 @@ export default function ChatPage() {
           </div>
           <Form {...messageForm}>
             <form onSubmit={submitMessage} className="p-4 sm:p-5 border-t" style={{ borderColor: "var(--line)", background: "rgba(255,255,255,.32)" }} data-testid="form-send-message">
-              <FormField control={messageForm.control} name="body" render={({ field }) => <FormItem className="w-full"><FormLabel className="field-label">Message the team</FormLabel><div className="flex items-end gap-2"><FormControl><textarea id="chat-message" {...field} className="field min-h-[48px] max-h-36" rows={2} maxLength={2000} placeholder="A useful update, in plain text…" data-testid="input-chat-message" /></FormControl><button type="submit" className="btn btn-primary !px-4 shrink-0" disabled={!messageText.trim() || sendMessage.isPending} aria-label="Send message" data-testid="button-send-message"><Icon name="arrow" size={17} />{sendMessage.isPending ? "Sending" : "Send"}</button></div><div className="flex items-center justify-between mt-2"><FormDescription>Plain text · up to 2,000 characters</FormDescription><span className="font-mono-ui text-[11px] text-muted-ink" data-testid="text-chat-character-count">{messageText.length}/2000</span></div></FormItem>} />
+              <FormField control={messageForm.control} name="body" render={({ field }) => <FormItem className="w-full"><FormLabel className="field-label">Message the team</FormLabel><div className="flex items-end gap-2"><FormControl><textarea id="chat-message" {...field} className="field min-h-[48px] max-h-36" rows={2} maxLength={2000} placeholder="A useful update, in plain text…" data-testid="input-chat-message" /></FormControl><button type="submit" className="btn btn-primary !px-4 shrink-0" disabled={!messageText.trim() || sendMessage.isPending} aria-label="Send message" data-testid="button-send-message"><Icon name="arrow" size={17} />{sendMessage.isPending ? "Sending" : "Send"}</button></div>
+                <label htmlFor="message-link-item" className="field-label mt-3">Attach an event link (optional)</label><select id="message-link-item" className="field field-compact" value={linkedItem} onChange={(e)=>setLinkedItem(e.target.value)} data-testid="select-message-link"><option value="">No link</option>{linkOptions.map((item)=><option key={item.key} value={item.key}>{item.label}</option>)}</select>
+                <div className="flex items-center justify-between mt-2"><FormDescription>Plain text · up to 2,000 characters</FormDescription><span className="font-mono-ui text-[11px] text-muted-ink" data-testid="text-chat-character-count">{messageText.length}/2000</span></div></FormItem>} />
               {messageError && <p className="field-error" role="alert" data-testid="status-send-message-error">{messageError}</p>}
             </form>
           </Form>
