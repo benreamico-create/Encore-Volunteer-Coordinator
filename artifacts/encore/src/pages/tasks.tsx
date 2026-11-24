@@ -5,9 +5,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  useCreateTask, useUpdateTask, useDeleteTask, useCreateRole, useAskHelper,
-  getGetEventQueryKey, getGetSessionQueryKey,
-  type EventBundle, type Task, type TaskStatus, type TaskUpdate, type HelperDraft, type HelperAction,
+  useCreateTask, useUpdateTask, useDeleteTask,
+  getGetEventQueryKey,
+  type EventBundle, type Task, type TaskStatus, type TaskUpdate,
 } from "@workspace/api-client-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub,
@@ -17,12 +17,11 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Switch } from "@/components/ui/switch";
 import { Shell, PageHeader } from "@/components/shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { MessageDialog } from "@/components/message-dialog";
 import { TaskColumn, TaskColumnTab } from "@/components/task-board-dnd";
+import { HelperPanel } from "@/components/helper-panel";
 import { Avatar, ErrorPanel, Icon, Skel, Star } from "@/components/brand";
 import { GROUPS, dueLabel, errorMessage, errorStatus, fmtDate, sourceChip } from "@/lib/encore";
 import { useEventBundle } from "@/lib/use-event";
-import { useEncore } from "@/lib/session";
 import { useToast } from "@/hooks/use-toast";
 
 const COLS: { id: TaskStatus; label: string }[] = [
@@ -226,99 +225,6 @@ function TaskCard({ b, t, index, colLen, onMove, onReorder, onEdit, onAssign, on
   );
 }
 
-type ActState = { applied?: boolean; title?: string; name?: string; slots?: number; instruction?: string };
-
-function HelperPanel({ b }: { b: EventBundle }) {
-  const id = b.event.id;
-  const qc = useQueryClient();
-  const { toast } = useToast();
-  const { session } = useEncore();
-  const ask = useAskHelper();
-  const createTask = useCreateTask();
-  const updateTask = useUpdateTask();
-  const createRole = useCreateRole();
-  const [question, setQuestion] = useState("");
-  const [result, setResult] = useState<HelperDraft | null>(null);
-  const [acts, setActs] = useState<ActState[]>([]);
-  const [msg, setMsg] = useState<string | null>(null);
-  const key = getGetEventQueryKey(id);
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!question.trim()) return;
-    ask.mutate({ data: { event_id: id, question: question.trim() } }, {
-      onSuccess: (r) => {
-        setResult(r);
-        setActs(r.actions.map((a) => ({ title: a.payload.title, name: a.payload.name, slots: a.payload.slots_needed ?? 1, instruction: a.payload.instruction ?? "" })));
-        qc.invalidateQueries({ queryKey: getGetSessionQueryKey() });
-      },
-      onError: (er) => toast({ title: "The helper could not answer", description: errorMessage(er), variant: "destructive" }),
-    });
-  };
-  const mark = (i: number) => setActs((a) => a.map((x, j) => (j === i ? { ...x, applied: true } : x)));
-  const apply = (a: HelperAction, i: number) => {
-    const s = acts[i];
-    const done = (label: string) => { mark(i); qc.invalidateQueries({ queryKey: key }); toast({ title: label }); };
-    const fail = (er: unknown) => toast({ title: "Could not apply", description: errorMessage(er), variant: "destructive" });
-    if (a.type === "add_task") {
-      if (!s.title?.trim()) return;
-      createTask.mutate({ id, data: { title: s.title.trim(), status: "todo" } }, { onSuccess: () => done("Task added"), onError: fail });
-    } else if (a.type === "assign_task" && a.payload.task_id) {
-      updateTask.mutate({ id, itemId: a.payload.task_id, data: { assignee_volunteer_id: a.payload.volunteer_id ?? null, assignee_user_id: null } }, { onSuccess: () => done("Assigned"), onError: fail });
-    } else if (a.type === "add_role") {
-      if (!s.name?.trim()) return;
-      createRole.mutate({ id, data: { name: s.name.trim(), slots_needed: Math.max(1, Math.min(100, s.slots || 1)), instruction: s.instruction ?? "" } }, { onSuccess: () => done("Role added"), onError: fail });
-    } else if (a.type === "draft_message") {
-      setMsg(a.payload.message ?? "");
-    }
-  };
-  const busy = createTask.isPending || updateTask.isPending || createRole.isPending;
-
-  return (
-    <section className="ai-glass relative" data-testid="panel-helper">
-      <Star size={12} className="absolute top-4 right-4" />
-      <div className="font-display text-[20px] leading-tight flex items-center gap-2"><Icon name="spark" size={18} /> Ask the helper</div>
-      <p className="text-[13px] mt-1 mb-3">It suggests. Nothing changes until you click.</p>
-      <form onSubmit={submit}>
-        <textarea className="field text-[14px]" rows={3} value={question} maxLength={2000} onChange={(e) => setQuestion(e.target.value)} placeholder="What am I forgetting for event day?" style={{ background: "rgba(255,255,255,0.75)" }} data-testid="input-helper-question" />
-        <button type="submit" className="btn btn-primary btn-sm mt-2.5 w-full" disabled={ask.isPending || !question.trim()} data-testid="button-ask">{ask.isPending ? "Thinking" : "Ask"}</button>
-      </form>
-      <div className="text-[12px] mt-2 text-center font-mono-ui uppercase tracking-[0.1em]" style={{ color: "#5A4A0A" }} data-testid="text-helper-remaining">{(result?.ai_remaining ?? session?.ai_remaining) ?? 0} uses left this month</div>
-      {ask.isPending && <div className="mt-3 space-y-2"><div className="skel h-14" /><div className="skel h-10" /></div>}
-      {result && !ask.isPending && (
-        <div className="mt-4 space-y-2.5">
-          {result.notice && <p className="text-[12px] italic" data-testid="text-helper-notice">{result.notice}</p>}
-          <div className="rounded-xl p-3 text-[14px] leading-relaxed whitespace-pre-wrap" style={{ background: "rgba(255,255,255,0.7)" }} data-testid="text-helper-answer">{result.answer}</div>
-          {result.actions.slice(0, 4).map((a, i) => {
-            const s = acts[i] ?? {};
-            return (
-              <div key={i} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(201,168,76,0.6)" }} data-testid={`card-helper-action-${i}`}>
-                <div className="text-[12px] font-mono-ui uppercase tracking-[0.1em] mb-1.5" style={{ color: "#5A4A0A" }}>{a.type.replace("_", " ")}</div>
-                {a.type === "add_task" && !s.applied && <input className="field field-compact mb-2" value={s.title ?? ""} onChange={(e) => setActs((x) => x.map((y, j) => j === i ? { ...y, title: e.target.value } : y))} aria-label="Task title" />}
-                {a.type === "add_role" && !s.applied && (
-                  <div className="space-y-1.5 mb-2">
-                    <input className="field field-compact" value={s.name ?? ""} onChange={(e) => setActs((x) => x.map((y, j) => j === i ? { ...y, name: e.target.value } : y))} aria-label="Role name" />
-                    <div className="flex gap-1.5">
-                      <input type="number" min={1} max={100} className="field field-compact w-20" value={s.slots ?? 1} onChange={(e) => setActs((x) => x.map((y, j) => j === i ? { ...y, slots: Number(e.target.value) } : y))} aria-label="Slots" />
-                      <input className="field field-compact flex-1" value={s.instruction ?? ""} placeholder="Instruction" onChange={(e) => setActs((x) => x.map((y, j) => j === i ? { ...y, instruction: e.target.value } : y))} aria-label="Instruction" />
-                    </div>
-                  </div>
-                )}
-                {s.applied ? (
-                  <span className="chip chip-done"><Icon name="check" size={12} /> Applied</span>
-                ) : (
-                  <button className="btn btn-sm w-full" style={{ background: "#37442E", color: "#fff" }} disabled={busy} onClick={() => apply(a, i)} data-testid={`button-apply-action-${i}`}>{a.label}</button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-      <MessageDialog open={msg !== null} onOpenChange={(v) => !v && setMsg(null)} title="Message draft" initial={msg ?? ""} subject={b.event.name} />
-    </section>
-  );
-}
-
 export default function TasksPage() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
@@ -451,7 +357,7 @@ export default function TasksPage() {
             </TaskColumn>
           ))}
         </div>
-        <aside className="min-[1200px]:sticky min-[1200px]:top-7"><HelperPanel b={b} /></aside>
+        <aside className="min-[1200px]:sticky min-[1200px]:top-7"><HelperPanel b={b} screen="tasks" /></aside>
       </div>
       <DragOverlay dropAnimation={null}>
         {dragId !== null && <div className="glass !p-4 shadow-xl font-semibold cursor-grabbing" style={{ maxWidth: 360 }}>{b.tasks.find(t => t.id === dragId)?.title}</div>}

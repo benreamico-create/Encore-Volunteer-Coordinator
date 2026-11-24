@@ -1931,58 +1931,12 @@ export const DraftPlanResponse = zod.object({
 
 export const askHelperBodyQuestionMax = 2000;
 
-export const askHelperBodyRecapRegisteredMin = 0;
-export const askHelperBodyRecapRegisteredMax = 1000000;
-
-export const askHelperBodyRecapAttendedMin = 0;
-export const askHelperBodyRecapAttendedMax = 1000000;
-
-export const askHelperBodyRecapWhatWorkedMax = 5000;
-
-export const askHelperBodyRecapWhatDidntMax = 5000;
-
-export const askHelperBodyRecapTopLessonMax = 5000;
-
-export const askHelperBodyRecapRatingOverallMax = 5;
-
-export const askHelperBodyRecapRatingVenueMax = 5;
-
-export const askHelperBodyRecapRatingVolunteersMax = 5;
-
-export const askHelperBodyRecapResourcesItemNameMax = 200;
-
-export const askHelperBodyRecapResourcesItemNoteMax = 2000;
-
-export const askHelperBodyRecapResourcesMax = 50;
-
-export const askHelperBodyRecapItemsItemMax = 1000;
-
-export const askHelperBodyRecapItemsMax = 30;
-
 
 
 export const AskHelperBody = zod.object({
   "event_id": zod.number().int(),
-  "question": zod.string().max(askHelperBodyQuestionMax).optional(),
-  "recap": zod.object({
-  "registered": zod.number().int().min(askHelperBodyRecapRegisteredMin).max(askHelperBodyRecapRegisteredMax),
-  "attended": zod.number().int().min(askHelperBodyRecapAttendedMin).max(askHelperBodyRecapAttendedMax),
-  "what_worked": zod.string().max(askHelperBodyRecapWhatWorkedMax),
-  "what_didnt": zod.string().max(askHelperBodyRecapWhatDidntMax),
-  "top_lesson": zod.string().max(askHelperBodyRecapTopLessonMax),
-  "rating_overall": zod.number().int().min(1).max(askHelperBodyRecapRatingOverallMax),
-  "rating_venue": zod.number().int().min(1).max(askHelperBodyRecapRatingVenueMax),
-  "rating_volunteers": zod.number().int().min(1).max(askHelperBodyRecapRatingVolunteersMax),
-  "resources": zod.array(zod.object({
-  "id": zod.number().int().optional(),
-  "name": zod.string().min(1).max(askHelperBodyRecapResourcesItemNameMax),
-  "kind": zod.enum(['venue', 'sponsor', 'vendor', 'speaker', 'other']),
-  "note": zod.string().max(askHelperBodyRecapResourcesItemNoteMax),
-  "use_again": zod.boolean(),
-  "carried_from_id": zod.number().int().nullish()
-})).max(askHelperBodyRecapResourcesMax),
-  "items": zod.array(zod.string().max(askHelperBodyRecapItemsItemMax)).max(askHelperBodyRecapItemsMax)
-}).optional()
+  "screen": zod.enum(['dashboard', 'new_event', 'plan', 'tasks', 'volunteers', 'blueprint', 'chat', 'wrapup', 'next']),
+  "question": zod.string().min(1).max(askHelperBodyQuestionMax)
 })
 
 export const askHelperResponseActionsMax = 4;

@@ -40,6 +40,7 @@ import type {
   EventUpdate,
   HealthStatus,
   HelperDraft,
+  HelperInput,
   JoinResult,
   ListEventMessagesParams,
   MapItem,
@@ -3289,7 +3290,7 @@ export const getAskHelperUrl = () => {
   return `/api/ai/helper`
 }
 
-export const askHelper = async (aiInput: AiInput, options?: Parameters<typeof customFetch>[1]): Promise<HelperDraft> => {
+export const askHelper = async (helperInput: HelperInput, options?: Parameters<typeof customFetch>[1]): Promise<HelperDraft> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -3310,7 +3311,7 @@ return customFetch<HelperDraft>(getAskHelperUrl(),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(aiInput)
+    body: JSON.stringify(helperInput)
   }
 );}
 
@@ -3348,9 +3349,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type AskHelperMutationResult = NonNullable<Awaited<ReturnType<typeof askHelper>>>
-    export type AskHelperMutationBody = BodyType<AiInput>
+    export type AskHelperMutationBody = BodyType<HelperInput>
     export type AskHelperMutationError = ErrorType<unknown>
-    export type AskHelperMutationVariables = {data: BodyType<AiInput>}
+    export type AskHelperMutationVariables = {data: BodyType<HelperInput>}
 
     export const useAskHelper = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof askHelper>>, TError,AskHelperMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

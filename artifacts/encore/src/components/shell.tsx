@@ -9,6 +9,9 @@ import { Icon, Orbs, EchoMark, Avatar } from "@/components/brand";
 import { useEncore } from "@/lib/session";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { HelperPanel } from "@/components/helper-panel";
+import { HELPER_SCREEN_INFO, type HelperScreen } from "@/lib/helper-screens";
+import { errorMessage } from "@/lib/encore";
 
 type ShellEvent = { id: number; name: string } | null;
 
@@ -89,7 +92,7 @@ function UserMenu({ side = "right" }: { side?: "right" | "top" }) {
   );
 }
 
-function EventRail({ activeId, tab, onAddSeries, onDashboard }: { activeId: number | null; tab: TabKey | null; onAddSeries: () => void; onDashboard: () => void }) {
+function EventRail({ activeId, tab, onAddSeries, onDashboard, onHelper, helperEnabled }: { activeId: number | null; tab: TabKey | null; onAddSeries: () => void; onDashboard: () => void; onHelper: (trigger: HTMLButtonElement) => void; helperEnabled: boolean }) {
   const { selectedSeries } = useEncore();
   const [loc] = useLocation();
   const seriesId = selectedSeries?.id ?? 0;
@@ -137,13 +140,21 @@ function EventRail({ activeId, tab, onAddSeries, onDashboard }: { activeId: numb
       </nav>
       <div className="mt-auto flex flex-col items-center pt-2">
         <div className="rail-divider" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" className="rail-helper mb-3" onClick={(event) => onHelper(event.currentTarget)} disabled={!helperEnabled} aria-label="Ask the helper" aria-haspopup="dialog" data-testid="button-rail-helper">
+              <Icon name="spark" size={20} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Ask the helper</TooltipContent>
+        </Tooltip>
         <UserMenu />
       </div>
     </aside>
   );
 }
 
-function SectionNav({ eventId, eventName, tab, onNavigate, onNewSeries, onClose }: { eventId: number | null; eventName: string | null; tab: TabKey | null; onNavigate: () => void; onNewSeries: () => void; onClose: () => void }) {
+function SectionNav({ eventId, eventName, tab, onNavigate, onNewSeries, onClose, onHelper }: { eventId: number | null; eventName: string | null; tab: TabKey | null; onNavigate: () => void; onNewSeries: () => void; onClose: () => void; onHelper: (trigger: HTMLButtonElement) => void }) {
   const { toast } = useToast();
   const [moreOpen, setMoreOpen] = useState(tab === "wrapup");
   useEffect(() => { if (tab === "wrapup") setMoreOpen(true); }, [tab]);
@@ -182,11 +193,9 @@ function SectionNav({ eventId, eventName, tab, onNavigate, onNewSeries, onClose 
         )}
       </nav>
       <div className="mt-auto p-3">
-        {eventId ? (
-          <Link href={`/app/events/${eventId}/tasks`} onClick={onNavigate} className="section-helper" data-testid="button-ask-helper"><Icon name="spark" size={18} /><span>Ask the helper</span></Link>
-        ) : (
-          <button type="button" className="section-helper is-disabled" disabled title="Open an event to ask the helper" data-testid="button-ask-helper"><Icon name="spark" size={18} /><span>Ask the helper</span></button>
-        )}
+        <button type="button" className={`section-helper ${eventId ? "" : "is-disabled"}`} onClick={(event) => onHelper(event.currentTarget)} disabled={!eventId} aria-haspopup="dialog" data-testid="button-ask-helper">
+          <Icon name="spark" size={18} /><span>Ask the helper</span>
+        </button>
       </div>
     </div>
   );
@@ -197,6 +206,19 @@ export function Shell({ event = null, children }: { event?: ShellEvent; children
   const route = parseRoute(loc);
   const eventId = route.eventId ?? event?.id ?? null;
   const { selectedSeries, selectSeries } = useEncore();
+  const [helperOpen, setHelperOpen] = useState(false);
+  const [helperPrompt, setHelperPrompt] = useState("");
+  const seriesFromRoute = Number(loc.match(/^\/app\/series\/(\d+)/)?.[1] ?? 0);
+  const fallbackSeriesId = seriesFromRoute || selectedSeries?.id || 0;
+  const fallbackDashboard = useGetDashboard(fallbackSeriesId, {
+    query: { enabled: !eventId && !!fallbackSeriesId, queryKey: getGetDashboardQueryKey(fallbackSeriesId) },
+  });
+  const helperEventId = eventId ?? fallbackDashboard.data?.events[0]?.id ?? null;
+  const isNextScreen = /^\/app\/events\/\d+\/next$/.test(loc);
+  const helperScreen: HelperScreen = route.tab ?? (isNextScreen ? "next" : loc === "/app" ? "dashboard" : loc.startsWith("/app/series/") ? "new_event" : eventId ? "plan" : "dashboard");
+  const helperBundle = useGetEvent(helperEventId ?? 0, {
+    query: { enabled: !!helperEventId && helperOpen, queryKey: getGetEventQueryKey(helperEventId ?? 0) },
+  });
   const routeId = route.eventId ?? 0;
   const bundle = useGetEvent(routeId, { query: { enabled: !!routeId, queryKey: getGetEventQueryKey(routeId) } });
   const bundleSeriesId = bundle.data && bundle.data.event.id === routeId ? bundle.data.event.series_id : null;
@@ -209,6 +231,8 @@ export function Shell({ event = null, children }: { event?: ShellEvent; children
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const helperDrawerRef = useRef<HTMLElement>(null);
+  const helperReturnFocusRef = useRef<HTMLElement | null>(null);
   const closeDrawer = (restore = true) => {
     setDrawerOpen(false);
     if (restore) requestAnimationFrame(() => toggleRef.current?.focus());
@@ -224,7 +248,26 @@ export function Shell({ event = null, children }: { event?: ShellEvent; children
       return next;
     });
   };
-  useEffect(() => { setDrawerOpen(false); }, [loc]);
+  const openHelper = (trigger?: HTMLButtonElement) => {
+    if (trigger) helperReturnFocusRef.current = trigger;
+    if (!helperEventId) return;
+    if (helperScreen === "tasks") {
+      setHelperOpen(false);
+      requestAnimationFrame(() => {
+        const panel = document.getElementById("panel-helper");
+        panel?.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.setTimeout(() => document.querySelector<HTMLTextAreaElement>('[data-testid="input-helper-question"]')?.focus(), 120);
+      });
+      return;
+    }
+    setHelperPrompt("");
+    setHelperOpen(true);
+  };
+  const closeHelper = (restore = true) => {
+    setHelperOpen(false);
+    if (restore) requestAnimationFrame(() => helperReturnFocusRef.current?.focus());
+  };
+  useEffect(() => { setDrawerOpen(false); setHelperOpen(false); }, [loc]);
   useEffect(() => {
     const desktop = window.matchMedia("(min-width: 900px)");
     const onResize = () => { if (desktop.matches) setDrawerOpen(false); };
@@ -248,14 +291,31 @@ export function Shell({ event = null, children }: { event?: ShellEvent; children
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [drawerOpen]);
+  useEffect(() => {
+    if (!helperOpen) return;
+    const el = helperDrawerRef.current;
+    const focusables = () => Array.from(el?.querySelectorAll<HTMLElement>('button:not([disabled]),textarea:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])') ?? []).filter((node) => node.offsetParent !== null);
+    requestAnimationFrame(() => (focusables()[0] ?? el)?.focus());
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); closeHelper(); return; }
+      if (event.key !== "Tab") return;
+      const items = focusables();
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !el?.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !el?.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [helperOpen]);
 
   return (
     <div className="min-h-[100dvh]">
       <Orbs />
-      <EventRail activeId={eventId} tab={route.tab} onAddSeries={() => setSeriesOpen(true)} onDashboard={collapseSidebar} />
+      <EventRail activeId={eventId} tab={route.tab} onAddSeries={() => setSeriesOpen(true)} onDashboard={collapseSidebar} onHelper={openHelper} helperEnabled={!!helperEventId} />
       <div className={`section-backdrop ${drawerOpen ? "is-open" : ""}`} onClick={() => closeDrawer()} aria-hidden="true" />
       <aside ref={drawerRef} id="section-sidebar" className={`section-sidebar ${sidebarCollapsed ? "is-collapsed" : ""} ${drawerOpen ? "is-open" : ""}`} aria-label="Event navigation" {...(drawerOpen ? { role: "dialog", "aria-modal": true } : {})}>
-        <SectionNav eventId={eventId} eventName={eventName} tab={route.tab} onNavigate={() => closeDrawer(false)} onNewSeries={() => setSeriesOpen(true)} onClose={() => closeDrawer()} />
+        <SectionNav eventId={helperEventId} eventName={eventName ?? helperBundle.data?.event.name ?? null} tab={route.tab} onNavigate={() => closeDrawer(false)} onNewSeries={() => setSeriesOpen(true)} onClose={() => closeDrawer()} onHelper={(trigger) => { closeDrawer(false); openHelper(trigger); }} />
         <button type="button" className="sidebar-collapse-toggle" aria-label={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"} aria-expanded={!sidebarCollapsed} aria-controls="section-sidebar" onClick={toggleSidebar} data-testid="button-toggle-sidebar">
           <Icon name="chevron" size={17} />
         </button>
@@ -266,6 +326,37 @@ export function Shell({ event = null, children }: { event?: ShellEvent; children
         </button>
         <div className="max-w-[1180px]">{children}</div>
       </main>
+      {helperOpen && (
+        <>
+          <button type="button" className="helper-drawer-backdrop" onClick={() => closeHelper()} aria-label="Close helper drawer" data-testid="button-close-helper-backdrop" />
+          <aside ref={helperDrawerRef} className="helper-drawer" role="dialog" aria-modal="true" aria-labelledby="helper-drawer-title" tabIndex={-1} data-testid="global-helper-drawer">
+            <header className="helper-drawer-header">
+              <div>
+                <div className="mono-label">Helping with: {HELPER_SCREEN_INFO[helperScreen].label}</div>
+                <h2 id="helper-drawer-title" className="font-display text-[28px] leading-tight mt-1">Ask the helper</h2>
+                {helperBundle.data?.event.name && <p className="text-[13px] text-muted-ink mt-1">{helperBundle.data.event.name}</p>}
+              </div>
+              <button type="button" className="icon-btn" onClick={() => closeHelper()} aria-label="Close helper" data-testid="button-close-helper"><Icon name="x" size={18} /></button>
+            </header>
+            {helperBundle.isLoading && <div className="space-y-3 p-5" role="status" aria-live="polite" data-testid="status-helper-context-loading"><div className="skel h-5 w-40" /><div className="skel h-16" /><div className="skel h-32" /></div>}
+            {helperBundle.isError && <div className="glass m-5" role="alert" data-testid="status-helper-context-error"><p>{errorMessage(helperBundle.error, "The event details could not be loaded.")}</p><button type="button" className="btn btn-secondary btn-sm mt-3" onClick={() => void helperBundle.refetch()}>Try again</button></div>}
+            {!helperEventId && <p className="p-5 text-[14px] text-muted-ink" data-testid="status-helper-no-event">Create or open an event to get screen-specific help.</p>}
+            {helperBundle.data && (
+              <div className="helper-drawer-body">
+                <p className="text-[14px] text-muted-ink mb-3">A few questions for this screen:</p>
+                <div className="flex flex-col gap-2 mb-5">
+                  {HELPER_SCREEN_INFO[helperScreen].prompts.map((prompt) => (
+                    <button key={prompt} type="button" className="helper-prompt text-left" onClick={() => setHelperPrompt(prompt)} data-testid="button-helper-screen-prompt">
+                      <Icon name="spark" size={15} />{prompt}
+                    </button>
+                  ))}
+                </div>
+                <HelperPanel key={`${helperBundle.data.event.id}-${helperScreen}`} b={helperBundle.data} screen={helperScreen} suggestedQuestion={helperPrompt} variant="drawer" />
+              </div>
+            )}
+          </aside>
+        </>
+      )}
       <CreateSeriesDialog open={seriesOpen} onOpenChange={setSeriesOpen} onCreated={() => navigate("/app")} />
     </div>
   );

@@ -108,7 +108,7 @@ Blueprint adds an event-specific private venue map, PNG/JPG upload (5 MB maximum
 
 Apply additive development schema updates with `artifacts/api-server/scripts/setup-dev-db.mjs`. Production environments must apply `lib/db/schema-phase4.sql` before serving Blueprint routes and `lib/db/schema-phase5.sql` before serving chat and announcement routes. Existing event, role, task, and volunteer records are preserved.
 
-The following remain outside Tier 2: chat and announcements (Tier 3); P1 map helper hints and resource-to-booth placement; P1 sponsors, email, Google sign-in, and helper drawer. The authenticated desktop/mobile interaction pass remains a separate release check. No paid AI calls or email messages are needed for Blueprint.
+The following remain outside Tier 2: chat and announcements (Tier 3); P1 map helper hints and resource-to-booth placement; P1 sponsors, email, and Google sign-in. The authenticated desktop/mobile interaction pass remains a separate release check. No paid AI calls or email messages are needed for Blueprint.
 
 Initial verification passed all four API phase checks and the full project typecheck. Screenshots confirmed signup/login at 1280px and 375px, volunteer signup at 375px and 1280px (including a full role), and volunteer confirmation/event-day views at 375px. Temporary visual-test data was removed afterwards. No paid model calls or emails were sent.
 
@@ -119,6 +119,12 @@ Blueprint verification also passed all four API phases, full project typecheck, 
 Chat is available at `/app/events/:id/chat`. Messages are stored per event, limited to 2,000 characters, polled by cursor every five seconds, and soft-deleted so other open chat sessions can show deletion updates. Sending is rate-limited per organizer account. Announcements are stored as history, while only the newest body and timestamp are included in a volunteer's existing private-page and map responses. The public signup and private token-link model is unchanged; volunteers cannot read or post organizer chat or announcements.
 
 The current account model gives each series one owner, so chat access is scoped to that owner. Co-organizer invitations and shared roles remain P1. The announcement drafter uses the existing server-side AI wrapper only when an organizer explicitly selects **Draft one**; it remains an editable, unpublished draft, and the deterministic template works with paid AI disabled.
+
+### Global helper drawer
+
+The gold helper buttons open a screen-aware drawer without leaving the current organizer page; below 900px it becomes a bottom sheet. The Tasks screen keeps its docked helper, and the rail button scrolls to and focuses that panel. Prompts and the server-side snapshot vary by screen. Chat context contains message and announcement counts only, never message text. Suggestions remain drafts until an organizer applies an action. With `AI_ENABLED` unset or false, the server returns deterministic screen-specific templates and makes no paid model calls.
+
+The helper check passed in all API self-test phases and the authenticated browser suite: screen labels/prompts, action-only changes, Escape and focus restoration, a 375px bottom sheet, Tasks-panel focus, and organizer routes at 375px/1280px. No paid AI calls were made.
 
 Event-editor/task-board regression verification also passed all four API phases, the full typecheck and the frontend production build. A signed-in browser pass at 1280px verified event editing, save/cancel, reload persistence, pointer-dragging dated tasks through all three columns, same-column reordering and the Status selector. At 375px it verified the scrollable editor, accessible save/cancel controls, status changes and no horizontal overflow. Touch-hold dragging was not exercised because the test browser lacks touch emulation; this is not a claim that the entire PRD 0.6 release gate has passed.
 
@@ -138,8 +144,9 @@ The first dashboard request exposed an outdated development database schema; the
 8. **Dates:** default America/Edmonton and CAD. Event instants are stored in UTC; task due dates remain `YYYY-MM-DD` calendar strings, including when read from PostgreSQL. Task due offsets and event-day switching use the event's timezone, not the browser's timezone. Editing an event preserves its tasks, signups, and public/private links. On a date change, the organizer can choose to shift unfinished task deadlines by the event-local calendar-day change; completed task deadlines stay unchanged, and the plan is not redrafted.
 9. **Attendance is typed and aggregate-only:** no attendee records are collected. A zero registered count has no computable show rate.
 10. **Safe reminder sharing:** a general draft can be shared with a group; individualized drafts must be sent separately so private tokens stay private.
-11. **Scope gate:** the assigned v2.1 Tier 1 is complete, but no later tier is started here. The Task 8 authenticated-screen pass is complete; the broader PRD 0.6 cross-surface check remains a release gate before starting the next tier. The supplied flow-map HTML is documentation only, not an app screen.
-12. **Fictional demo only:** relative dates keep the demo's Spring Mixer upcoming. Real event data must be entered manually after publishing; it is not in seeds.
+11. **Scope gate:** build only the PRD phases and features currently approved; do not treat the supplied flow-map HTML as an app screen. The broader PRD 0.6 cross-surface check remains a separate release gate.
+12. **Helper context:** send a validated screen name and only a bounded, event-owned snapshot to the server-side helper. Chat summaries use counts only, and suggested changes are never applied until the organizer chooses an action.
+13. **Fictional demo only:** relative dates keep the demo's Spring Mixer upcoming. Real event data must be entered manually after publishing; it is not in seeds.
 
 ## Publishing
 

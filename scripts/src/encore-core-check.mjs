@@ -257,6 +257,35 @@ try {
   assert.equal((await publicContext.request.get(`/api/events/${id}/messages`)).status(), 401);
   console.log("PASS Blueprint rename, resize, deletion, zoom, pan, responsive position and private sharing");
 
+  // The global helper stays on the current screen, applies only on click, and becomes a mobile sheet.
+  const tasksBeforeHelper = (await api(`/events/${id}`)).tasks.length;
+  await testid("button-rail-helper").click();
+  await testid("global-helper-drawer").waitFor();
+  assert.match(await testid("global-helper-drawer").innerText(), /Helping with: Blueprint/i);
+  assert.equal(await testid("button-helper-screen-prompt").count(), 3);
+  await testid("button-helper-screen-prompt").first().click();
+  const helperQuestion = await testid("input-helper-question").inputValue();
+  assert(helperQuestion.length > 0);
+  await testid("button-ask").click();
+  await testid("panel-helper-response").waitFor({ timeout: 15000 });
+  assert.equal((await api(`/events/${id}`)).tasks.length, tasksBeforeHelper, "helper suggestions must not change event data before an action is clicked");
+  await testid("button-apply-action-0").click();
+  await waitUntil(async () => (await api(`/events/${id}`)).tasks.length === tasksBeforeHelper + 1, "explicit helper action");
+  await page.keyboard.press("Escape");
+  await testid("global-helper-drawer").waitFor({ state: "detached" });
+  assert.equal(await page.evaluate(() => (document.activeElement?.getAttribute("data-testid") ?? "") === "button-rail-helper"), true);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await testid("button-rail-helper").click();
+  await testid("global-helper-drawer").waitFor();
+  const helperSheet = await testid("global-helper-drawer").boundingBox();
+  assert(helperSheet && helperSheet.x >= 72 && helperSheet.y > 0 && helperSheet.height <= 900, `Expected a mobile bottom sheet, got ${JSON.stringify(helperSheet)}`);
+  await page.keyboard.press("Escape");
+  await visit(`/app/events/${id}/tasks`, "button-new-task", 375);
+  await testid("button-rail-helper").click();
+  await waitUntil(async () => testid("input-helper-question").evaluate((el) => document.activeElement === el), "focus docked Tasks helper");
+  assert.equal(await testid("global-helper-drawer").count(), 0);
+  console.log("PASS global helper screen prompts, explicit apply, Escape/focus restore, mobile sheet and Tasks focus");
+
   // Cross-browser polling uses two normal sessions for the same organizer.
   // Separate teammate accounts remain a P1 invite/access prerequisite, not claimed here.
   const secondContext = await browser.newContext({ baseURL, viewport: { width: 1280, height: 900 } });
@@ -294,6 +323,15 @@ try {
   for (const width of [375, 1280]) {
     for (const [path, ready] of screens) {
       await visit(path, ready, width);
+      if (width === 1280 && !path.endsWith("/tasks")) {
+        const helperLabel = path === "/app" ? "Dashboard" : path.includes("/series/") ? "New event" : path.endsWith("/next") ? "Next event" : path.endsWith("/wrapup") ? "Wrap-up" : path.split("/").at(-1).replace(/^./, (letter) => letter.toUpperCase());
+        await testid("button-rail-helper").click();
+        await testid("global-helper-drawer").waitFor();
+        assert.match(await testid("global-helper-drawer").innerText(), new RegExp(`Helping with: ${helperLabel}`, "i"));
+        assert.equal(await testid("button-helper-screen-prompt").count(), 3);
+        await page.keyboard.press("Escape");
+        await testid("global-helper-drawer").waitFor({ state: "detached" });
+      }
       if (path.endsWith("/tasks")) await page.screenshot({ path: `${output}tasks-${width}.png` });
       if (width === 375) {
         await testid("button-toggle-sections").click();

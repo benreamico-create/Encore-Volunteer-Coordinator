@@ -208,8 +208,19 @@ try {
       await a.call(`/events/${event.id}`,"PATCH",{signups_open:false});
       await publicClient.call(`/public/join/${event.signup_slug}`,"POST",signup,409);
       await a.call(`/events/${event.id}`,"PATCH",{signups_open:true});
-      const helper=await a.call("/ai/helper","POST",{event_id:event.id,question:"What should I do next?"});
+      const helperBefore=await a.call(`/events/${event.id}`);
+      const helper=await a.call("/ai/helper","POST",{event_id:event.id,screen:"tasks",question:"What should I do next?"});
       assert(helper.actions.length<=4); assert.match(helper.notice,/template/);
+      assert.match(helper.answer,/open tasks/i);
+      const helperAfter=await a.call(`/events/${event.id}`);
+      assert.equal(helperAfter.tasks.length,helperBefore.tasks.length);
+      assert.equal(helperAfter.roles.length,helperBefore.roles.length);
+      for (const screen of ["dashboard","new_event","plan","volunteers","blueprint","chat","wrapup","next"]) {
+        const contextual=await a.call("/ai/helper","POST",{event_id:event.id,screen,question:`Help with ${screen}`});
+        assert(contextual.actions.length<=4);
+        assert.match(contextual.notice,/template/);
+      }
+      await a.call("/ai/helper","POST",{event_id:event.id,screen:"invalid-screen",question:"Not valid"},400);
       await a.call(`/events/${event.id}/volunteers/${volunteer.id}`,"DELETE");
       assert.equal((await a.call(`/events/${event.id}`)).tasks.filter(t=>t.source==="signup").length,0);
       assert.equal((await publicClient.call(`/public/join/${event.signup_slug}`)).roles.find(r=>r.id===role.id).filled,0);
@@ -250,7 +261,7 @@ try {
         const starter=await a.call("/ai/starter","POST",{event_id:event.id,recap});
         assert(starter.items.length>=3&&starter.items.length<=7); assert.match(starter.notice,/template/);
         await pool.query("INSERT INTO ai_usage(user_id,month,call_count) VALUES($1,$2,150) ON CONFLICT(user_id,month) DO UPDATE SET call_count=150",[signed.user.id,new Date().toISOString().slice(0,7)]);
-        const capped=await a.call("/ai/helper","POST",{event_id:event.id,question:"Check the limit"});
+        const capped=await a.call("/ai/helper","POST",{event_id:event.id,screen:"tasks",question:"Check the limit"});
         assert.equal(capped.ai_remaining,0); assert.match(capped.notice,/limit is reached/);
         const input={name:"Fictional next event",starts_at:"2027-04-20T01:00:00Z",carry_lessons:true,carry_resources:true,carry_roles:true,carry_recurring:true,carry_volunteers:true,carry_map:true,items:["An edited starter task"]};
         const next=await a.call(`/events/${event.id}/next`,"POST",input);

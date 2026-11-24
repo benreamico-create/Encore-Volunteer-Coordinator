@@ -392,6 +392,31 @@ export interface AiInput {
   recap?: RecapInput;
 }
 
+export type HelperInputScreen = typeof HelperInputScreen[keyof typeof HelperInputScreen];
+
+
+export const HelperInputScreen = {
+  dashboard: 'dashboard',
+  new_event: 'new_event',
+  plan: 'plan',
+  tasks: 'tasks',
+  volunteers: 'volunteers',
+  blueprint: 'blueprint',
+  chat: 'chat',
+  wrapup: 'wrapup',
+  next: 'next',
+} as const;
+
+export interface HelperInput {
+  event_id: number;
+  screen: HelperInputScreen;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  question: string;
+}
+
 export interface DraftTask {
   /**
      * @minLength 1

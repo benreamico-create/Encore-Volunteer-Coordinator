@@ -509,7 +509,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/AiInput" }
+            schema: { $ref: "#/components/schemas/HelperInput" }
       responses:
         "200":
           description: Explicitly applicable suggested actions
@@ -846,6 +846,15 @@ components:
         event_id: { type: integer }
         question: { type: string, maxLength: 2000 }
         recap: { $ref: "#/components/schemas/RecapInput" }
+    HelperInput:
+      type: object
+      required: [event_id, screen, question]
+      properties:
+        event_id: { type: integer }
+        screen:
+          type: string
+          enum: [dashboard, new_event, plan, tasks, volunteers, blueprint, chat, wrapup, next]
+        question: { type: string, minLength: 1, maxLength: 2000 }
     DraftTask:
       type: object
       required: [title, due_offset_days]
