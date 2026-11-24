@@ -10,4 +10,5 @@ import type { SeriesInput } from './seriesInput';
 export type Series = SeriesInput & {
   id: number;
   owner_id: number;
+  demo?: boolean;
 };

@@ -7,7 +7,7 @@ import { pool } from "@workspace/db";
 import { HttpError, one } from "./store";
 
 declare module "express-session" {
-  interface SessionData { userId?: number; csrfToken?: string; }
+  interface SessionData { userId?: number; csrfToken?: string; googleOAuth?: { state: string; verifier: string; redirectUri: string; expires: number }; }
 }
 const scrypt = promisify(scryptCallback);
 const secret = process.env.SESSION_SECRET;
@@ -24,7 +24,8 @@ export async function passwordHash(password: string) {
   const hash = await scrypt(password, salt, 64) as Buffer;
   return `${salt}:${hash.toString("hex")}`;
 }
-export async function passwordMatches(password: string, stored: string) {
+export async function passwordMatches(password: string, stored: string | null) {
+  if (!stored) { await passwordHash(password); return false; }
   const [salt, encoded] = stored.split(":");
   const hash = await scrypt(password, salt, 64) as Buffer;
   const expected = Buffer.from(encoded, "hex");

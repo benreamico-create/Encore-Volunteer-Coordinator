@@ -12,4 +12,5 @@ export interface SessionInfo {
   csrfToken: string;
   ai_remaining: number;
   email_enabled: boolean;
+  google_enabled?: boolean;
 }

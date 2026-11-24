@@ -9,6 +9,11 @@ import type { EventUpdateStatus } from './eventUpdateStatus';
 
 export interface EventUpdate {
   /**
+     * @minimum 0
+     * @nullable
+     */
+  sponsor_goal_amount?: number | null;
+  /**
      * @minLength 1
      * @maxLength 160
      */

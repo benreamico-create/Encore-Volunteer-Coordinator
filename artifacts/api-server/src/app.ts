@@ -12,6 +12,10 @@ import recapsRouter from "./routes/recaps";
 import demoRouter from "./routes/demo";
 import mapsRouter from "./routes/maps";
 import teamRouter from "./routes/team";
+import accessRouter from "./routes/access";
+import sponsorsRouter from "./routes/sponsors";
+import accountRouter from "./routes/account";
+import emailRouter from "./routes/email";
 
 const app: Express = express();
 app.set("trust proxy", 1);
@@ -45,6 +49,7 @@ app.use((req,res,next) => {
 });
 app.use(sessionMiddleware);
 app.use("/api", csrfProtection, authRouter);
+app.use("/api", accessRouter, accountRouter, emailRouter);
 
 app.use("/api", router);
 app.use("/api", eventsRouter);
@@ -52,6 +57,7 @@ app.use("/api", teamRouter);
 app.use("/api", mapsRouter);
 app.use("/api", tasksRouter, publicRouter);
 app.use("/api", recapsRouter, demoRouter);
+app.use("/api", sponsorsRouter);
 const errors: ErrorRequestHandler = (err, req, res, _next) => {
   if (err.name === "ZodError") { res.status(400).json({error:"Please check the required fields and their values."}); return; }
   if (err instanceof HttpError) { res.status(err.status).json({error:err.message}); return; }

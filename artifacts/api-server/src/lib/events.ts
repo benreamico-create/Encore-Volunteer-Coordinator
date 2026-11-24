@@ -3,10 +3,10 @@ import { HttpError, one, rows, required, type Sql, sql, type Row } from "./store
 
 export function wire<T>(value:T):T { return JSON.parse(JSON.stringify(value)); }
 export async function ownedSeries(uid:number,sid:number,client:Sql=sql) {
-  return required(await one("SELECT * FROM series WHERE id=$1 AND owner_id=$2",[sid,uid],client));
+  return required(await one("SELECT * FROM series s WHERE id=$1 AND (owner_id=$2 OR EXISTS(SELECT 1 FROM series_members m WHERE m.series_id=s.id AND m.user_id=$2))",[sid,uid],client));
 }
 export async function ownedEvent(uid:number,eid:number,client:Sql=sql) {
-  return required(await one(`SELECT e.* FROM events e JOIN series s ON s.id=e.series_id WHERE e.id=$1 AND s.owner_id=$2`,[eid,uid],client));
+  return required(await one(`SELECT e.* FROM events e JOIN series s ON s.id=e.series_id WHERE e.id=$1 AND (s.owner_id=$2 OR EXISTS(SELECT 1 FROM series_members m WHERE m.series_id=s.id AND m.user_id=$2))`,[eid,uid],client));
 }
 export async function eventSummary(eid:number,client:Sql=sql) {
   return required(await one(`SELECT e.*,
@@ -37,7 +37,7 @@ export async function bundle(uid:number,eid:number,client:Sql=sql) {
     tasks:await rows("SELECT * FROM tasks WHERE event_id=$1 ORDER BY sort_order,id",[eid],client),
     roles:await roleList(eid,client),volunteers:await rows("SELECT * FROM volunteers WHERE event_id=$1 ORDER BY created_at DESC,id DESC",[eid],client),resources:await rows("SELECT * FROM resources WHERE event_id=$1 ORDER BY id",[eid],client),recap:await recapData(eid,client),
     previous:await previousData(event,client),
-    organizers:await rows("SELECT id,name,email FROM users WHERE id=$1",[uid],client),
+    organizers:await rows("SELECT u.id,u.name,u.email FROM users u JOIN series s ON s.id=$1 WHERE u.id=s.owner_id OR EXISTS(SELECT 1 FROM series_members m WHERE m.series_id=s.id AND m.user_id=u.id) ORDER BY (u.id=s.owner_id) DESC,u.id",[event.series_id],client),
   };
 }
 export function validDate(value:string) {

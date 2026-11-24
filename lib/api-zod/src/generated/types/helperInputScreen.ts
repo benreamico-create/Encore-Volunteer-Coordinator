@@ -17,6 +17,7 @@ export const HelperInputScreen = {
   volunteers: 'volunteers',
   blueprint: 'blueprint',
   chat: 'chat',
+  sponsors: 'sponsors',
   wrapup: 'wrapup',
   next: 'next',
 } as const;

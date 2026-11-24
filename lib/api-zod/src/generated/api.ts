@@ -8,6 +8,331 @@
 import * as zod from 'zod';
 
 
+export const RequestPasswordResetBody = zod.object({
+  "email": zod.string().email()
+})
+
+export const RequestPasswordResetResponse = zod.object({
+  "message": zod.string()
+})
+
+
+export const confirmPasswordResetBodyTokenMin = 48;
+export const confirmPasswordResetBodyTokenMax = 128;
+
+export const confirmPasswordResetBodyPasswordMin = 8;
+export const confirmPasswordResetBodyPasswordMax = 128;
+
+
+
+export const ConfirmPasswordResetBody = zod.object({
+  "token": zod.string().min(confirmPasswordResetBodyTokenMin).max(confirmPasswordResetBodyTokenMax),
+  "password": zod.string().min(confirmPasswordResetBodyPasswordMin).max(confirmPasswordResetBodyPasswordMax)
+})
+
+export const ConfirmPasswordResetResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+export const DeleteAccountResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+export const GetSeriesTeamParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetSeriesTeamResponse = zod.object({
+  "is_owner": zod.boolean(),
+  "members": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "role": zod.enum(['owner', 'editor', 'viewer'])
+}))
+})
+
+
+export const CreateSeriesInviteParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const CreateSeriesInviteBody = zod.object({
+  "role": zod.enum(['editor', 'viewer'])
+})
+
+export const CreateSeriesInviteResponse = zod.object({
+  "id": zod.number().int(),
+  "token": zod.string()
+})
+
+
+export const RevokeSeriesInviteParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "itemId": zod.coerce.number().int()
+})
+
+export const RevokeSeriesInviteResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+export const RemoveSeriesMemberParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "itemId": zod.coerce.number().int()
+})
+
+export const RemoveSeriesMemberResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+export const acceptSeriesInviteBodyTokenMin = 48;
+export const acceptSeriesInviteBodyTokenMax = 128;
+
+
+
+export const AcceptSeriesInviteBody = zod.object({
+  "token": zod.string().min(acceptSeriesInviteBodyTokenMin).max(acceptSeriesInviteBodyTokenMax)
+})
+
+export const AcceptSeriesInviteResponse = zod.object({
+  "series_id": zod.number().int()
+})
+
+
+export const ListSponsorsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const listSponsorsResponseOneNameMax = 160;
+
+export const listSponsorsResponseOneOfferTextMax = 2000;
+
+export const listSponsorsResponseOneAmountMin = 0;
+export const listSponsorsResponseOneAmountMax = 1000000000;
+
+export const listSponsorsResponseOneNextStepTextMax = 300;
+
+
+
+export const ListSponsorsResponseItem = zod.object({
+  "name": zod.string().min(1).max(listSponsorsResponseOneNameMax),
+  "offer_text": zod.string().max(listSponsorsResponseOneOfferTextMax),
+  "status": zod.enum(['asked', 'talking', 'yes', 'declined']),
+  "owner_user_id": zod.number().int().nullable(),
+  "amount": zod.number().min(listSponsorsResponseOneAmountMin).max(listSponsorsResponseOneAmountMax).nullable(),
+  "next_step_text": zod.string().max(listSponsorsResponseOneNextStepTextMax),
+  "next_step_due": zod.string().nullable()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "created_at": zod.string()
+}))
+export const ListSponsorsResponse = zod.array(ListSponsorsResponseItem)
+
+
+export const CreateSponsorParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const createSponsorBodyNameMax = 160;
+
+export const createSponsorBodyOfferTextMax = 2000;
+
+export const createSponsorBodyAmountMin = 0;
+export const createSponsorBodyAmountMax = 1000000000;
+
+export const createSponsorBodyNextStepTextMax = 300;
+
+
+
+export const CreateSponsorBody = zod.object({
+  "name": zod.string().min(1).max(createSponsorBodyNameMax),
+  "offer_text": zod.string().max(createSponsorBodyOfferTextMax),
+  "status": zod.enum(['asked', 'talking', 'yes', 'declined']),
+  "owner_user_id": zod.number().int().nullable(),
+  "amount": zod.number().min(createSponsorBodyAmountMin).max(createSponsorBodyAmountMax).nullable(),
+  "next_step_text": zod.string().max(createSponsorBodyNextStepTextMax),
+  "next_step_due": zod.string().nullable()
+})
+
+export const createSponsorResponseOneNameMax = 160;
+
+export const createSponsorResponseOneOfferTextMax = 2000;
+
+export const createSponsorResponseOneAmountMin = 0;
+export const createSponsorResponseOneAmountMax = 1000000000;
+
+export const createSponsorResponseOneNextStepTextMax = 300;
+
+
+
+export const CreateSponsorResponse = zod.object({
+  "name": zod.string().min(1).max(createSponsorResponseOneNameMax),
+  "offer_text": zod.string().max(createSponsorResponseOneOfferTextMax),
+  "status": zod.enum(['asked', 'talking', 'yes', 'declined']),
+  "owner_user_id": zod.number().int().nullable(),
+  "amount": zod.number().min(createSponsorResponseOneAmountMin).max(createSponsorResponseOneAmountMax).nullable(),
+  "next_step_text": zod.string().max(createSponsorResponseOneNextStepTextMax),
+  "next_step_due": zod.string().nullable()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "created_at": zod.string()
+}))
+
+
+export const UpdateSponsorParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "itemId": zod.coerce.number().int()
+})
+
+export const updateSponsorBodyNameMax = 160;
+
+export const updateSponsorBodyOfferTextMax = 2000;
+
+export const updateSponsorBodyAmountMin = 0;
+export const updateSponsorBodyAmountMax = 1000000000;
+
+export const updateSponsorBodyNextStepTextMax = 300;
+
+
+
+export const UpdateSponsorBody = zod.object({
+  "name": zod.string().min(1).max(updateSponsorBodyNameMax),
+  "offer_text": zod.string().max(updateSponsorBodyOfferTextMax),
+  "status": zod.enum(['asked', 'talking', 'yes', 'declined']),
+  "owner_user_id": zod.number().int().nullable(),
+  "amount": zod.number().min(updateSponsorBodyAmountMin).max(updateSponsorBodyAmountMax).nullable(),
+  "next_step_text": zod.string().max(updateSponsorBodyNextStepTextMax),
+  "next_step_due": zod.string().nullable()
+})
+
+export const updateSponsorResponseOneNameMax = 160;
+
+export const updateSponsorResponseOneOfferTextMax = 2000;
+
+export const updateSponsorResponseOneAmountMin = 0;
+export const updateSponsorResponseOneAmountMax = 1000000000;
+
+export const updateSponsorResponseOneNextStepTextMax = 300;
+
+
+
+export const UpdateSponsorResponse = zod.object({
+  "name": zod.string().min(1).max(updateSponsorResponseOneNameMax),
+  "offer_text": zod.string().max(updateSponsorResponseOneOfferTextMax),
+  "status": zod.enum(['asked', 'talking', 'yes', 'declined']),
+  "owner_user_id": zod.number().int().nullable(),
+  "amount": zod.number().min(updateSponsorResponseOneAmountMin).max(updateSponsorResponseOneAmountMax).nullable(),
+  "next_step_text": zod.string().max(updateSponsorResponseOneNextStepTextMax),
+  "next_step_due": zod.string().nullable()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "created_at": zod.string()
+}))
+
+
+export const DeleteSponsorParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "itemId": zod.coerce.number().int()
+})
+
+export const DeleteSponsorResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+export const CreateSponsorTaskParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "itemId": zod.coerce.number().int()
+})
+
+export const createSponsorTaskResponseOneTitleMax = 300;
+
+export const createSponsorTaskResponseOneGroupNameMax = 120;
+
+
+
+export const CreateSponsorTaskResponse = zod.object({
+  "title": zod.string().min(1).max(createSponsorTaskResponseOneTitleMax),
+  "group_name": zod.string().max(createSponsorTaskResponseOneGroupNameMax).optional(),
+  "status": zod.enum(['todo', 'doing', 'done']),
+  "assignee_user_id": zod.number().int().nullish(),
+  "assignee_volunteer_id": zod.number().int().nullish(),
+  "role_id": zod.number().int().nullish(),
+  "due_date": zod.string().nullish(),
+  "recurring": zod.boolean(),
+  "sort_order": zod.number()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "event_id": zod.number().int(),
+  "status": zod.enum(['todo', 'doing', 'done']),
+  "source": zod.string(),
+  "source_note": zod.string().optional(),
+  "recurring": zod.boolean(),
+  "sort_order": zod.number()
+}))
+
+
+export const DraftSponsorEmailParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "itemId": zod.coerce.number().int()
+})
+
+export const DraftSponsorEmailResponse = zod.object({
+  "message": zod.string(),
+  "notice": zod.string(),
+  "ai_remaining": zod.number().int()
+})
+
+
+export const updateDemoResponseOneNameMax = 120;
+
+export const updateDemoResponseOneDescriptionMax = 2000;
+
+
+
+export const UpdateDemoResponse = zod.object({
+  "name": zod.string().min(1).max(updateDemoResponseOneNameMax),
+  "description": zod.string().max(updateDemoResponseOneDescriptionMax).optional()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "owner_id": zod.number().int(),
+  "demo": zod.boolean().optional()
+}))
+
+
+export const SendReminderParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const sendReminderBodyMessageMax = 5000;
+
+
+
+export const SendReminderBody = zod.object({
+  "message": zod.string().min(1).max(sendReminderBodyMessageMax)
+})
+
+export const SendReminderResponse = zod.object({
+  "sent": zod.number().int(),
+  "failed": zod.number().int()
+})
+
+
+export const CancelVolunteerParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const CancelVolunteerResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
@@ -21,7 +346,8 @@ export const GetSessionResponse = zod.object({
 }),zod.null()]),
   "csrfToken": zod.string(),
   "ai_remaining": zod.number().int(),
-  "email_enabled": zod.boolean()
+  "email_enabled": zod.boolean(),
+  "google_enabled": zod.boolean().optional()
 })
 
 
@@ -48,7 +374,8 @@ export const SignUpResponse = zod.object({
 }),zod.null()]),
   "csrfToken": zod.string(),
   "ai_remaining": zod.number().int(),
-  "email_enabled": zod.boolean()
+  "email_enabled": zod.boolean(),
+  "google_enabled": zod.boolean().optional()
 })
 
 
@@ -75,7 +402,8 @@ export const LogInResponse = zod.object({
 }),zod.null()]),
   "csrfToken": zod.string(),
   "ai_remaining": zod.number().int(),
-  "email_enabled": zod.boolean()
+  "email_enabled": zod.boolean(),
+  "google_enabled": zod.boolean().optional()
 })
 
 
@@ -95,7 +423,8 @@ export const ListSeriesResponseItem = zod.object({
   "description": zod.string().max(listSeriesResponseOneDescriptionMax).optional()
 }).and(zod.object({
   "id": zod.number().int(),
-  "owner_id": zod.number().int()
+  "owner_id": zod.number().int(),
+  "demo": zod.boolean().optional()
 }))
 export const ListSeriesResponse = zod.array(ListSeriesResponseItem)
 
@@ -122,7 +451,8 @@ export const CreateSeriesResponse = zod.object({
   "description": zod.string().max(createSeriesResponseOneDescriptionMax).optional()
 }).and(zod.object({
   "id": zod.number().int(),
-  "owner_id": zod.number().int()
+  "owner_id": zod.number().int(),
+  "demo": zod.boolean().optional()
 }))
 
 
@@ -216,7 +546,8 @@ export const GetDashboardResponse = zod.object({
   "description": zod.string().max(getDashboardResponseSeriesOneDescriptionMax).optional()
 }).and(zod.object({
   "id": zod.number().int(),
-  "owner_id": zod.number().int()
+  "owner_id": zod.number().int(),
+  "demo": zod.boolean().optional()
 })),
   "events": zod.array(zod.object({
   "name": zod.string().min(1).max(getDashboardResponseEventsItemOneNameMax),
@@ -241,6 +572,7 @@ export const GetDashboardResponse = zod.object({
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
   "map_shared": zod.boolean(),
+  "sponsor_goal_amount": zod.number().nullish(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -278,6 +610,7 @@ export const GetDashboardResponse = zod.object({
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
   "map_shared": zod.boolean(),
+  "sponsor_goal_amount": zod.number().nullish(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -431,6 +764,7 @@ export const CreateEventResponse = zod.object({
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
   "map_shared": zod.boolean(),
+  "sponsor_goal_amount": zod.number().nullish(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -596,6 +930,7 @@ export const GetEventResponse = zod.object({
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
   "map_shared": zod.boolean(),
+  "sponsor_goal_amount": zod.number().nullish(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -614,7 +949,8 @@ export const GetEventResponse = zod.object({
   "description": zod.string().max(getEventResponseSeriesOneDescriptionMax).optional()
 }).and(zod.object({
   "id": zod.number().int(),
-  "owner_id": zod.number().int()
+  "owner_id": zod.number().int(),
+  "demo": zod.boolean().optional()
 })),
   "tasks": zod.array(zod.object({
   "title": zod.string().min(1).max(getEventResponseTasksItemOneTitleMax),
@@ -710,6 +1046,7 @@ export const GetEventResponse = zod.object({
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
   "map_shared": zod.boolean(),
+  "sponsor_goal_amount": zod.number().nullish(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -785,6 +1122,8 @@ export const UpdateEventParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const updateEventBodySponsorGoalAmountMin = 0;
+
 export const updateEventBodyNameMax = 160;
 
 export const updateEventBodyCityMax = 160;
@@ -811,6 +1150,7 @@ export const updateEventBodyPlaceTextMax = 500;
 
 
 export const UpdateEventBody = zod.object({
+  "sponsor_goal_amount": zod.number().min(updateEventBodySponsorGoalAmountMin).nullish(),
   "name": zod.string().min(1).max(updateEventBodyNameMax).optional(),
   "starts_at": zod.string().optional(),
   "timezone": zod.string().optional(),
@@ -875,6 +1215,7 @@ export const UpdateEventResponse = zod.object({
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
   "map_shared": zod.boolean(),
+  "sponsor_goal_amount": zod.number().nullish(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -908,6 +1249,10 @@ export const listEventMessagesResponseBodyMax = 2000;
 
 
 export const ListEventMessagesResponseItem = zod.object({
+  "link_type": zod.union([zod.literal('task'),zod.literal('map_item'),zod.literal('role'),zod.literal(null)]).nullish(),
+  "link_id": zod.number().int().nullish(),
+  "link_label": zod.string().nullish(),
+  "link_href": zod.string().nullish(),
   "id": zod.number().int(),
   "event_id": zod.number().int(),
   "user_id": zod.number().int(),
@@ -928,6 +1273,8 @@ export const createEventMessageBodyBodyMax = 2000;
 
 
 export const CreateEventMessageBody = zod.object({
+  "link_type": zod.union([zod.literal('task'),zod.literal('map_item'),zod.literal('role'),zod.literal(null)]).nullish(),
+  "link_id": zod.number().int().nullish(),
   "body": zod.string().min(1).max(createEventMessageBodyBodyMax)
 })
 
@@ -936,6 +1283,10 @@ export const createEventMessageResponseBodyMax = 2000;
 
 
 export const CreateEventMessageResponse = zod.object({
+  "link_type": zod.union([zod.literal('task'),zod.literal('map_item'),zod.literal('role'),zod.literal(null)]).nullish(),
+  "link_id": zod.number().int().nullish(),
+  "link_label": zod.string().nullish(),
+  "link_href": zod.string().nullish(),
   "id": zod.number().int(),
   "event_id": zod.number().int(),
   "user_id": zod.number().int(),
@@ -956,6 +1307,10 @@ export const deleteEventMessageResponseBodyMax = 2000;
 
 
 export const DeleteEventMessageResponse = zod.object({
+  "link_type": zod.union([zod.literal('task'),zod.literal('map_item'),zod.literal('role'),zod.literal(null)]).nullish(),
+  "link_id": zod.number().int().nullish(),
+  "link_label": zod.string().nullish(),
+  "link_href": zod.string().nullish(),
   "id": zod.number().int(),
   "event_id": zod.number().int(),
   "user_id": zod.number().int(),
@@ -1784,6 +2139,7 @@ export const CreateNextEventResponse = zod.object({
   "auto_task_from_signup": zod.boolean(),
   "event_day_mode": zod.boolean(),
   "map_shared": zod.boolean(),
+  "sponsor_goal_amount": zod.number().nullish(),
   "event_day_notes": zod.string().optional(),
   "day_of_contact_text": zod.string().optional(),
   "timezone": zod.string(),
@@ -1827,7 +2183,8 @@ export const LoadDemoResponse = zod.object({
   "description": zod.string().max(loadDemoResponseOneDescriptionMax).optional()
 }).and(zod.object({
   "id": zod.number().int(),
-  "owner_id": zod.number().int()
+  "owner_id": zod.number().int(),
+  "demo": zod.boolean().optional()
 }))
 
 
@@ -1935,7 +2292,7 @@ export const askHelperBodyQuestionMax = 2000;
 
 export const AskHelperBody = zod.object({
   "event_id": zod.number().int(),
-  "screen": zod.enum(['dashboard', 'new_event', 'plan', 'tasks', 'volunteers', 'blueprint', 'chat', 'wrapup', 'next']),
+  "screen": zod.enum(['dashboard', 'new_event', 'plan', 'tasks', 'volunteers', 'blueprint', 'chat', 'sponsors', 'wrapup', 'next']),
   "question": zod.string().min(1).max(askHelperBodyQuestionMax)
 })
 

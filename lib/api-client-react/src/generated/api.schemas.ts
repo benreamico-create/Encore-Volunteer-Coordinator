@@ -5,6 +5,90 @@
  * Encore organizer and volunteer API
  * OpenAPI spec version: 1.0.0
  */
+export interface PasswordResetInput {
+  email: string;
+}
+
+export interface PasswordResetConfirmInput {
+  /**
+     * @minLength 48
+     * @maxLength 128
+     */
+  token: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export type InviteInputRole = typeof InviteInputRole[keyof typeof InviteInputRole];
+
+
+export const InviteInputRole = {
+  editor: 'editor',
+  viewer: 'viewer',
+} as const;
+
+export interface InviteInput {
+  role: InviteInputRole;
+}
+
+export interface InviteAcceptInput {
+  /**
+     * @minLength 48
+     * @maxLength 128
+     */
+  token: string;
+}
+
+export interface ReminderSendInput {
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  message: string;
+}
+
+export type SponsorInputStatus = typeof SponsorInputStatus[keyof typeof SponsorInputStatus];
+
+
+export const SponsorInputStatus = {
+  asked: 'asked',
+  talking: 'talking',
+  yes: 'yes',
+  declined: 'declined',
+} as const;
+
+export interface SponsorInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name: string;
+  /** @maxLength 2000 */
+  offer_text: string;
+  status: SponsorInputStatus;
+  /** @nullable */
+  owner_user_id: number | null;
+  /**
+     * @minimum 0
+     * @maximum 1000000000
+     * @nullable
+     */
+  amount: number | null;
+  /** @maxLength 300 */
+  next_step_text: string;
+  /** @nullable */
+  next_step_due: string | null;
+}
+
+export type Sponsor = SponsorInput & {
+  id: number;
+  event_id: number;
+  created_at: string;
+};
+
 export interface HealthStatus {
   status: string;
 }
@@ -24,6 +108,7 @@ export interface SessionInfo {
   csrfToken: string;
   ai_remaining: number;
   email_enabled: boolean;
+  google_enabled?: boolean;
 }
 
 export interface AuthInput {
@@ -51,6 +136,7 @@ export interface SeriesInput {
 export type Series = SeriesInput & {
   id: number;
   owner_id: number;
+  demo?: boolean;
 };
 
 export interface EventInput {
@@ -96,6 +182,11 @@ export const EventUpdateStatus = {
 } as const;
 
 export interface EventUpdate {
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  sponsor_goal_amount?: number | null;
   /**
      * @minLength 1
      * @maxLength 160
@@ -156,6 +247,8 @@ export type Event = EventInput & ({
   auto_task_from_signup: boolean;
   event_day_mode: boolean;
   map_shared: boolean;
+  /** @nullable */
+  sponsor_goal_amount?: number | null;
   event_day_notes?: string;
   day_of_contact_text?: string;
   timezone: string;
@@ -403,6 +496,7 @@ export const HelperInputScreen = {
   volunteers: 'volunteers',
   blueprint: 'blueprint',
   chat: 'chat',
+  sponsors: 'sponsors',
   wrapup: 'wrapup',
   next: 'next',
 } as const;
@@ -803,7 +897,23 @@ export interface VolunteerMap {
   announcement: PublicAnnouncement | null;
 }
 
+/**
+ * @nullable
+ */
+export type MessageInputLinkType = typeof MessageInputLinkType[keyof typeof MessageInputLinkType] | null;
+
+
+export const MessageInputLinkType = {
+  task: 'task',
+  map_item: 'map_item',
+  role: 'role',
+} as const;
+
 export interface MessageInput {
+  /** @nullable */
+  link_type?: MessageInputLinkType;
+  /** @nullable */
+  link_id?: number | null;
   /**
      * @minLength 1
      * @maxLength 2000
@@ -811,7 +921,27 @@ export interface MessageInput {
   body: string;
 }
 
+/**
+ * @nullable
+ */
+export type TeamMessageLinkType = typeof TeamMessageLinkType[keyof typeof TeamMessageLinkType] | null;
+
+
+export const TeamMessageLinkType = {
+  task: 'task',
+  map_item: 'map_item',
+  role: 'role',
+} as const;
+
 export interface TeamMessage {
+  /** @nullable */
+  link_type?: TeamMessageLinkType;
+  /** @nullable */
+  link_id?: number | null;
+  /** @nullable */
+  link_label?: string | null;
+  /** @nullable */
+  link_href?: string | null;
   id: number;
   event_id: number;
   user_id: number;
@@ -855,6 +985,50 @@ export interface AnnouncementDraft {
 export interface TickInput {
   done: boolean;
 }
+
+export type RequestPasswordReset200 = {
+  message: string;
+};
+
+export type GetSeriesTeam200MembersItemRole = typeof GetSeriesTeam200MembersItemRole[keyof typeof GetSeriesTeam200MembersItemRole];
+
+
+export const GetSeriesTeam200MembersItemRole = {
+  owner: 'owner',
+  editor: 'editor',
+  viewer: 'viewer',
+} as const;
+
+export type GetSeriesTeam200MembersItem = {
+  id: number;
+  name: string;
+  role: GetSeriesTeam200MembersItemRole;
+};
+
+export type GetSeriesTeam200 = {
+  is_owner: boolean;
+  members: GetSeriesTeam200MembersItem[];
+};
+
+export type CreateSeriesInvite200 = {
+  id: number;
+  token: string;
+};
+
+export type AcceptSeriesInvite200 = {
+  series_id: number;
+};
+
+export type DraftSponsorEmail200 = {
+  message: string;
+  notice: string;
+  ai_remaining: number;
+};
+
+export type SendReminder200 = {
+  sent: number;
+  failed: number;
+};
 
 export type ListEventMessagesParams = {
 /**

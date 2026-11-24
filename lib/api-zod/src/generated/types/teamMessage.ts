@@ -5,8 +5,17 @@
  * Encore organizer and volunteer API
  * OpenAPI spec version: 1.0.0
  */
+import type { TeamMessageLinkType } from './teamMessageLinkType';
 
 export interface TeamMessage {
+  /** @nullable */
+  link_type?: TeamMessageLinkType;
+  /** @nullable */
+  link_id?: number | null;
+  /** @nullable */
+  link_label?: string | null;
+  /** @nullable */
+  link_href?: string | null;
   id: number;
   event_id: number;
   user_id: number;

@@ -8,7 +8,7 @@ import { z } from "zod";
 
 const router=Router();
 router.get("/series",async(req,res)=>{
-  res.json(ListSeriesResponse.parse(await rows("SELECT * FROM series WHERE owner_id=$1 ORDER BY created_at,id",[userId(req)])));
+  res.json(ListSeriesResponse.parse(await rows("SELECT * FROM series s WHERE owner_id=$1 OR EXISTS(SELECT 1 FROM series_members m WHERE m.series_id=s.id AND m.user_id=$1) ORDER BY created_at,id",[userId(req)])));
 });
 router.post("/series",async(req,res)=>{
   const uid=userId(req),data=CreateSeriesBody.parse(req.body);

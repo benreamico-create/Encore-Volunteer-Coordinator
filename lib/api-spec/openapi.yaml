@@ -6,6 +6,254 @@ info:
 servers:
   - url: /api
 paths:
+  /auth/password-reset:
+    post:
+      operationId: requestPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordResetInput" }
+      responses:
+        "200":
+          description: Reset guidance
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { type: string }
+  /auth/password-reset/confirm:
+    post:
+      operationId: confirmPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordResetConfirmInput" }
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /account:
+    delete:
+      operationId: deleteAccount
+      responses:
+        "200":
+          description: Account and owned data deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /series/{id}/team:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      operationId: getSeriesTeam
+      responses:
+        "200":
+          description: Team members
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [members, is_owner]
+                properties:
+                  is_owner: { type: boolean }
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, role]
+                      properties:
+                        id: { type: integer }
+                        name: { type: string }
+                        role: { type: string, enum: [owner, editor, viewer] }
+  /series/{id}/invites:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      operationId: createSeriesInvite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InviteInput" }
+      responses:
+        "200":
+          description: One week invitation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, token]
+                properties:
+                  id: { type: integer }
+                  token: { type: string }
+  /series/{id}/invites/{itemId}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/ItemId" }
+    delete:
+      operationId: revokeSeriesInvite
+      responses:
+        "200":
+          description: Link revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /series/{id}/team/{itemId}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/ItemId" }
+    delete:
+      operationId: removeSeriesMember
+      responses:
+        "200":
+          description: Access revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /invites/accept:
+    post:
+      operationId: acceptSeriesInvite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InviteAcceptInput" }
+      responses:
+        "200":
+          description: Joined series
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [series_id]
+                properties:
+                  series_id: { type: integer }
+  /events/{id}/sponsors:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      operationId: listSponsors
+      responses:
+        "200":
+          description: Event sponsors
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Sponsor" } }
+    post:
+      operationId: createSponsor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SponsorInput" }
+      responses:
+        "200":
+          description: Created sponsor
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sponsor" }
+  /events/{id}/sponsors/{itemId}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/ItemId" }
+    put:
+      operationId: updateSponsor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SponsorInput" }
+      responses:
+        "200":
+          description: Saved sponsor
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sponsor" }
+    delete:
+      operationId: deleteSponsor
+      responses:
+        "200":
+          description: Deleted sponsor
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+  /events/{id}/sponsors/{itemId}/task:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/ItemId" }
+    post:
+      operationId: createSponsorTask
+      responses:
+        "200":
+          description: Created next step task
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+  /events/{id}/sponsors/{itemId}/draft:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/ItemId" }
+    post:
+      operationId: draftSponsorEmail
+      responses:
+        "200":
+          description: Editable copy-only draft
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, notice, ai_remaining]
+                properties:
+                  message: { type: string }
+                  notice: { type: string }
+                  ai_remaining: { type: integer }
+  /demo/update:
+    post:
+      operationId: updateDemo
+      responses:
+        "200":
+          description: Updated fictional demo once
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Series" }
+  /events/{id}/reminder/send:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      operationId: sendReminder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReminderSendInput" }
+      responses:
+        "200":
+          description: Send results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sent, failed]
+                properties:
+                  sent: { type: integer }
+                  failed: { type: integer }
+  /public/v/{token}/cancel:
+    parameters:
+      - { name: token, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: cancelVolunteer
+      responses:
+        "200":
+          description: Cancelled and freed slot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
   /healthz:
     get:
       operationId: healthCheck
@@ -598,6 +846,52 @@ components:
     Id: { name: id, in: path, required: true, schema: { type: integer } }
     ItemId: { name: itemId, in: path, required: true, schema: { type: integer } }
   schemas:
+    PasswordResetInput:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    PasswordResetConfirmInput:
+      type: object
+      required: [token, password]
+      properties:
+        token: { type: string, minLength: 48, maxLength: 128 }
+        password: { type: string, minLength: 8, maxLength: 128 }
+    InviteInput:
+      type: object
+      required: [role]
+      properties:
+        role: { type: string, enum: [editor, viewer] }
+    InviteAcceptInput:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, minLength: 48, maxLength: 128 }
+    ReminderSendInput:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 1, maxLength: 5000 }
+    SponsorInput:
+      type: object
+      required: [name, offer_text, status, owner_user_id, amount, next_step_text, next_step_due]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        offer_text: { type: string, maxLength: 2000 }
+        status: { type: string, enum: [asked, talking, yes, declined] }
+        owner_user_id: { type: [integer, "null"] }
+        amount: { type: [number, "null"], minimum: 0, maximum: 1000000000 }
+        next_step_text: { type: string, maxLength: 300 }
+        next_step_due: { type: [string, "null"] }
+    Sponsor:
+      allOf:
+        - { $ref: "#/components/schemas/SponsorInput" }
+        - type: object
+          required: [id, event_id, created_at]
+          properties:
+            id: { type: integer }
+            event_id: { type: integer }
+            created_at: { type: string }
     HealthStatus:
       type: object
       required: [status]
@@ -623,6 +917,7 @@ components:
         csrfToken: { type: string }
         ai_remaining: { type: integer }
         email_enabled: { type: boolean }
+        google_enabled: { type: boolean }
     AuthInput:
       type: object
       required: [email, password]
@@ -644,6 +939,7 @@ components:
           properties:
             id: { type: integer }
             owner_id: { type: integer }
+            demo: { type: boolean }
     EventInput:
       type: object
       required: [name, starts_at, description_raw]
@@ -663,6 +959,7 @@ components:
     EventUpdate:
       type: object
       properties:
+        sponsor_goal_amount: { type: [number, "null"], minimum: 0 }
         name: { type: string, minLength: 1, maxLength: 160 }
         starts_at: { type: string }
         timezone: { type: string }
@@ -696,6 +993,7 @@ components:
             auto_task_from_signup: { type: boolean }
             event_day_mode: { type: boolean }
             map_shared: { type: boolean }
+            sponsor_goal_amount: { type: [number, "null"] }
             event_day_notes: { type: string }
             day_of_contact_text: { type: string }
             timezone: { type: string }
@@ -853,7 +1151,7 @@ components:
         event_id: { type: integer }
         screen:
           type: string
-          enum: [dashboard, new_event, plan, tasks, volunteers, blueprint, chat, wrapup, next]
+          enum: [dashboard, new_event, plan, tasks, volunteers, blueprint, chat, sponsors, wrapup, next]
         question: { type: string, minLength: 1, maxLength: 2000 }
     DraftTask:
       type: object
@@ -1087,11 +1385,17 @@ components:
       type: object
       required: [body]
       properties:
+        link_type: { type: [string, "null"], enum: [task, map_item, role, null] }
+        link_id: { type: [integer, "null"] }
         body: { type: string, minLength: 1, maxLength: 2000 }
     TeamMessage:
       type: object
       required: [id, event_id, user_id, user_name, body, created_at, deleted_at]
       properties:
+        link_type: { type: [string, "null"], enum: [task, map_item, role, null] }
+        link_id: { type: [integer, "null"] }
+        link_label: { type: [string, "null"] }
+        link_href: { type: [string, "null"] }
         id: { type: integer }
         event_id: { type: integer }
         user_id: { type: integer }

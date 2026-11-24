@@ -5,8 +5,13 @@
  * Encore organizer and volunteer API
  * OpenAPI spec version: 1.0.0
  */
+import type { MessageInputLinkType } from './messageInputLinkType';
 
 export interface MessageInput {
+  /** @nullable */
+  link_type?: MessageInputLinkType;
+  /** @nullable */
+  link_id?: number | null;
   /**
      * @minLength 1
      * @maxLength 2000
